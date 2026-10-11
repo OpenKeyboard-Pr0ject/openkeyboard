@@ -1,0 +1,20 @@
+{
+  "name": "openkeyboard",
+  "version": "0.1.0-beta",
+  "private": true,
+  "description": "Browser-based control panel for gaming keyboards over WebHID.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "check": "tsc --noEmit && vitest run && vite build"
+  },
+  "devDependencies": {
+    "@types/w3c-web-hid": "^1.0.6",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7",
+    "vitest": "^2.1.8"
+  }
+}
