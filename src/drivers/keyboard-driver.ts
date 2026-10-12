@@ -1,3 +1,5 @@
+import type { AnalogKeySource } from "../keyboard/analog-keys";
+
 export interface KeyboardIdentity {
   readonly vendorName: string;
   readonly productName: string;
@@ -9,12 +11,15 @@ export interface KeyboardIdentity {
 
 export interface KeyboardSession {
   readonly device: HIDDevice;
+  readonly analogKeys?: AnalogKeySource;
   readIdentity(): Promise<KeyboardIdentity>;
   close(): Promise<void>;
 }
 
+export type AuthorizedDeviceLister = () => Promise<HIDDevice[]>;
+
 export interface KeyboardDriver {
   readonly requestFilters: readonly HIDDeviceFilter[];
   supports(device: HIDDevice): boolean;
-  open(device: HIDDevice): Promise<KeyboardSession>;
+  open(device: HIDDevice, listAuthorizedDevices: AuthorizedDeviceLister): Promise<KeyboardSession>;
 }

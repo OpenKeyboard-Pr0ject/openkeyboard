@@ -29,6 +29,15 @@ export const wootingConfigCollection: HIDCollectionInfo = {
   featureReports: [{ reportId: COMMAND_REPORT_ID, items: [{ reportSize: 8, reportCount: COMMAND_REPORT_BYTES }] }],
 };
 
+export const wootingAnalogCollection: HIDCollectionInfo = {
+  usagePage: 0xff53,
+  usage: 0x01,
+  children: [],
+  inputReports: [],
+  outputReports: [],
+  featureReports: [],
+};
+
 export class FakeHidDevice {
   opened = false;
   readonly vendorId: number;

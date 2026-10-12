@@ -5,6 +5,7 @@ import { FakeHidDevice, wootingConfigCollection } from "../fakes/fake-hid-device
 import { firmwareVersionReply } from "../fakes/wooting-80he-captures";
 
 const analogStreamCollection: HIDCollectionInfo = { ...wootingConfigCollection, usagePage: 0xff53, featureReports: [] };
+const noAuthorizedDevices = async (): Promise<HIDDevice[]> => [];
 
 describe("wootingKeyboardDriver.supports", () => {
   it("accepts a Wooting interface that exposes the config collection", () => {
@@ -28,14 +29,14 @@ describe("Wooting keyboard session", () => {
   it("opens the device when it is not open yet", async () => {
     const device = new FakeHidDevice({ respond: () => firmwareVersionReply });
 
-    await wootingKeyboardDriver.open(device.asHidDevice());
+    await wootingKeyboardDriver.open(device.asHidDevice(), noAuthorizedDevices);
 
     expect(device.opened).toBe(true);
   });
 
   it("reads the identity of the 80HE including its firmware version", async () => {
     const device = new FakeHidDevice({ respond: () => firmwareVersionReply });
-    const session = await wootingKeyboardDriver.open(device.asHidDevice());
+    const session = await wootingKeyboardDriver.open(device.asHidDevice(), noAuthorizedDevices);
 
     await expect(session.readIdentity()).resolves.toEqual({
       vendorName: "Wooting",
@@ -49,7 +50,7 @@ describe("Wooting keyboard session", () => {
 
   it("marks product ids that were never tested on hardware as unverified", async () => {
     const device = new FakeHidDevice({ productId: 0x1322, respond: () => firmwareVersionReply });
-    const session = await wootingKeyboardDriver.open(device.asHidDevice());
+    const session = await wootingKeyboardDriver.open(device.asHidDevice(), noAuthorizedDevices);
 
     const identity = await session.readIdentity();
 

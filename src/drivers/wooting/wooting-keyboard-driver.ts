@@ -1,20 +1,26 @@
 import { hasCollection } from "../../hid/collections";
+import type { AnalogKeySource } from "../../keyboard/analog-keys";
 import { decodeFirmwareVersion } from "../../protocol/wooting/wooting-codec";
 import { WootingCommandChannel } from "../../protocol/wooting/wooting-command-channel";
 import {
+  WOOTING_ANALOG_USAGE,
+  WOOTING_ANALOG_USAGE_PAGE,
   WOOTING_CONFIG_USAGE,
   WOOTING_CONFIG_USAGE_PAGE,
   WOOTING_HARDWARE_VERIFIED_PRODUCT_IDS,
   WOOTING_VENDOR_ID,
   WootingCommand,
 } from "../../protocol/wooting/wooting-constants";
-import type { KeyboardDriver, KeyboardIdentity, KeyboardSession } from "../keyboard-driver";
+import type { AuthorizedDeviceLister, KeyboardDriver, KeyboardIdentity, KeyboardSession } from "../keyboard-driver";
+import { WootingAnalogKeySource } from "./wooting-analog-key-source";
 
 class WootingKeyboardSession implements KeyboardSession {
+  readonly analogKeys: AnalogKeySource;
   private readonly commands: WootingCommandChannel;
 
-  constructor(readonly device: HIDDevice) {
+  constructor(readonly device: HIDDevice, listAuthorizedDevices: AuthorizedDeviceLister) {
     this.commands = new WootingCommandChannel(device);
+    this.analogKeys = new WootingAnalogKeySource(device, listAuthorizedDevices);
   }
 
   async readIdentity(): Promise<KeyboardIdentity> {
@@ -35,15 +41,18 @@ class WootingKeyboardSession implements KeyboardSession {
 }
 
 export const wootingKeyboardDriver: KeyboardDriver = {
-  requestFilters: [{ vendorId: WOOTING_VENDOR_ID, usagePage: WOOTING_CONFIG_USAGE_PAGE, usage: WOOTING_CONFIG_USAGE }],
+  requestFilters: [
+    { vendorId: WOOTING_VENDOR_ID, usagePage: WOOTING_CONFIG_USAGE_PAGE, usage: WOOTING_CONFIG_USAGE },
+    { vendorId: WOOTING_VENDOR_ID, usagePage: WOOTING_ANALOG_USAGE_PAGE, usage: WOOTING_ANALOG_USAGE },
+  ],
 
   supports(device) {
     return device.vendorId === WOOTING_VENDOR_ID
       && hasCollection(device, WOOTING_CONFIG_USAGE_PAGE, WOOTING_CONFIG_USAGE);
   },
 
-  async open(device) {
+  async open(device, listAuthorizedDevices) {
     if (!device.opened) await device.open();
-    return new WootingKeyboardSession(device);
+    return new WootingKeyboardSession(device, listAuthorizedDevices);
   },
 };

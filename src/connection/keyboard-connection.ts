@@ -1,12 +1,13 @@
 import { driverFor, isSupportedKeyboard, keyboardRequestFilters } from "../drivers/keyboard-driver-registry";
 import type { KeyboardIdentity, KeyboardSession } from "../drivers/keyboard-driver";
+import type { AnalogKeySource } from "../keyboard/analog-keys";
 import { describeError } from "../shared/describe-error";
 
 export type ConnectionState =
   | { readonly kind: "unsupported-browser" }
   | { readonly kind: "disconnected"; readonly notice?: string }
   | { readonly kind: "connecting"; readonly deviceName: string }
-  | { readonly kind: "connected"; readonly identity: KeyboardIdentity }
+  | { readonly kind: "connected"; readonly identity: KeyboardIdentity; readonly analogKeys?: AnalogKeySource }
   | { readonly kind: "failed"; readonly deviceName: string; readonly reason: string };
 
 export type ConnectionStateListener = (state: ConnectionState) => void;
@@ -74,8 +75,10 @@ export class KeyboardConnection {
     await this.closeSession();
     this.publish({ kind: "connecting", deviceName: device.productName });
     try {
-      this.session = await driverFor(device).open(device);
-      this.publish({ kind: "connected", identity: await this.session.readIdentity() });
+      const session = await driverFor(device).open(device, () => this.requireHid().getDevices());
+      this.session = session;
+      const identity = await session.readIdentity();
+      this.publish({ kind: "connected", identity, analogKeys: session.analogKeys });
     } catch (error) {
       await this.closeSession();
       this.publish({ kind: "failed", deviceName: device.productName, reason: describeError(error) });

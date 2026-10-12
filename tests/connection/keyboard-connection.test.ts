@@ -46,7 +46,19 @@ describe("KeyboardConnection", () => {
 
     await connection.requestKeyboard();
 
-    expect(hid.requestedFilters).toEqual([{ vendorId: 0x31e3, usagePage: 0xff55, usage: 0x01 }]);
+    expect(hid.requestedFilters).toEqual([
+      { vendorId: 0x31e3, usagePage: 0xff55, usage: 0x01 },
+      { vendorId: 0x31e3, usagePage: 0xff53, usage: 0x01 },
+    ]);
+  });
+
+  it("offers live key input once the keyboard is connected", async () => {
+    const connection = new KeyboardConnection(new FakeHid([respondingKeyboard().asHidDevice()]).asHid());
+    const states = recordStates(connection);
+
+    await connection.start();
+
+    expect(states.at(-1)).toMatchObject({ kind: "connected", analogKeys: expect.anything() });
   });
 
   it("connects to the keyboard the user picked", async () => {

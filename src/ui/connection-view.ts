@@ -2,6 +2,7 @@ import type { ConnectionState, KeyboardConnection } from "../connection/keyboard
 import type { KeyboardIdentity } from "../drivers/keyboard-driver";
 import { formatHex } from "../shared/hex";
 import { actionButton, element } from "./dom";
+import { LiveKeyPanel } from "./live-key-panel";
 
 type StatusTone = "idle" | "busy" | "online" | "error";
 
@@ -10,10 +11,19 @@ interface StatusCardContent {
   readonly title: string;
   readonly body: readonly Node[];
   readonly actions: readonly HTMLButtonElement[];
+  readonly livePanel?: LiveKeyPanel;
 }
 
+type ConnectedState = Extract<ConnectionState, { kind: "connected" }>;
+
 export function mountConnectionView(root: HTMLElement, connection: KeyboardConnection): void {
-  connection.subscribe((state) => root.replaceChildren(statusCard(cardContentFor(state, connection))));
+  let activeLivePanel: LiveKeyPanel | undefined;
+  connection.subscribe((state) => {
+    activeLivePanel?.dispose();
+    const content = cardContentFor(state, connection);
+    activeLivePanel = content.livePanel;
+    root.replaceChildren(statusCard(content));
+  });
 }
 
 function cardContentFor(state: ConnectionState, connection: KeyboardConnection): StatusCardContent {
@@ -25,7 +35,7 @@ function cardContentFor(state: ConnectionState, connection: KeyboardConnection):
     case "connecting":
       return { tone: "busy", title: `Connecting to ${state.deviceName}…`, body: [], actions: [] };
     case "connected":
-      return connectedContent(connection, state.identity);
+      return connectedContent(connection, state);
     case "failed":
       return failedContent(connection, state.deviceName, state.reason);
   }
@@ -50,15 +60,17 @@ function disconnectedContent(connection: KeyboardConnection, notice?: string): S
   };
 }
 
-function connectedContent(connection: KeyboardConnection, identity: KeyboardIdentity): StatusCardContent {
+function connectedContent(connection: KeyboardConnection, state: ConnectedState): StatusCardContent {
+  const requestAccess = () => void connection.requestKeyboard();
   return {
     tone: "online",
-    title: identity.productName,
-    body: [identityDetails(identity)],
+    title: state.identity.productName,
+    body: [identityDetails(state.identity)],
     actions: [
       actionButton("Disconnect", "secondary", () => void connection.disconnect()),
       actionButton("Forget device", "secondary", () => void connection.forget()),
     ],
+    livePanel: state.analogKeys ? new LiveKeyPanel(state.analogKeys, requestAccess) : undefined,
   };
 }
 
@@ -95,7 +107,8 @@ function statusCard(content: StatusCardContent): HTMLElement {
     element("h2", "status-card__title", [content.title]),
   ]);
   const actions = element("div", "status-card__actions", content.actions);
-  return element("section", "status-card", [heading, ...content.body, actions]);
+  const livePanel = content.livePanel ? [content.livePanel.element] : [];
+  return element("section", "status-card", [heading, ...content.body, actions, ...livePanel]);
 }
 
 function paragraph(text: string): HTMLParagraphElement {
