@@ -31,6 +31,18 @@ export const keyMappingPayload = payloadOf([
   "0a170a15636665f629ff29ff29f56967e7ff4d4e4cffffffff",
 ].join(""));
 export const keyboardProfilePayload = payloadOf("0a1408d09f011001180120868d012800300238004800");
+export const keyboardProfileContinuousOffPayload = payloadOf("0a1408d09f011001180120e68c012800300238014800");
+export const keyboardProfileRapidTriggerOffPayload = payloadOf("0a1408d09f011001180020868d012800300238004800");
+export const keyboardProfileSensitivityLoweredPayload = payloadOf("0a1408d09f011001180120b386012800300238014800");
+
+export const currentProfileIndexPayload = payloadOf("0000");
+
+export function replyCarrying(command: number, payload: Uint8Array): Uint8Array {
+  const reply = new Uint8Array(6 + payload.length);
+  reply.set([0xd1, 0xda, command, 0x88, payload.length & 0xff, payload.length >> 8]);
+  reply.set(payload, 6);
+  return reply;
+}
 
 export const analogReportAStartingToMove = capturedReply("61040008");
 export const analogReportEscapePressed = capturedReply("0029c02c");

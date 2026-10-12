@@ -1,4 +1,5 @@
 import type { AnalogKeySource } from "../keyboard/analog-keys";
+import type { KeyboardProfileReader } from "../keyboard/keyboard-profile";
 
 export interface KeyboardIdentity {
   readonly vendorName: string;
@@ -12,6 +13,7 @@ export interface KeyboardIdentity {
 export interface KeyboardSession {
   readonly device: HIDDevice;
   readonly analogKeys?: AnalogKeySource;
+  readonly profiles?: KeyboardProfileReader;
   readIdentity(): Promise<KeyboardIdentity>;
   close(): Promise<void>;
 }

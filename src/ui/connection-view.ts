@@ -1,8 +1,10 @@
 import type { ConnectionState, KeyboardConnection } from "../connection/keyboard-connection";
 import type { KeyboardIdentity } from "../drivers/keyboard-driver";
 import { formatHex } from "../shared/hex";
-import { actionButton, element } from "./dom";
+import { actionButton, detailRow, element } from "./dom";
 import { LiveKeyPanel } from "./live-key-panel";
+import type { Panel } from "./panel";
+import { ProfilePanel } from "./profile-panel";
 
 type StatusTone = "idle" | "busy" | "online" | "error";
 
@@ -11,17 +13,17 @@ interface StatusCardContent {
   readonly title: string;
   readonly body: readonly Node[];
   readonly actions: readonly HTMLButtonElement[];
-  readonly livePanel?: LiveKeyPanel;
+  readonly panels?: readonly Panel[];
 }
 
 type ConnectedState = Extract<ConnectionState, { kind: "connected" }>;
 
 export function mountConnectionView(root: HTMLElement, connection: KeyboardConnection): void {
-  let activeLivePanel: LiveKeyPanel | undefined;
+  let activePanels: readonly Panel[] = [];
   connection.subscribe((state) => {
-    activeLivePanel?.dispose();
+    activePanels.forEach((panel) => panel.dispose());
     const content = cardContentFor(state, connection);
-    activeLivePanel = content.livePanel;
+    activePanels = content.panels ?? [];
     root.replaceChildren(statusCard(content));
   });
 }
@@ -70,7 +72,10 @@ function connectedContent(connection: KeyboardConnection, state: ConnectedState)
       actionButton("Disconnect", "secondary", () => void connection.disconnect()),
       actionButton("Forget device", "secondary", () => void connection.forget()),
     ],
-    livePanel: state.analogKeys ? new LiveKeyPanel(state.analogKeys, requestAccess) : undefined,
+    panels: [
+      ...(state.profiles ? [new ProfilePanel(state.profiles)] : []),
+      ...(state.analogKeys ? [new LiveKeyPanel(state.analogKeys, requestAccess)] : []),
+    ],
   };
 }
 
@@ -97,9 +102,6 @@ function identityDetails(identity: KeyboardIdentity): HTMLDListElement {
   ]);
 }
 
-function detailRow(label: string, value: string): HTMLElement[] {
-  return [element("dt", "details__label", [label]), element("dd", "details__value", [value])];
-}
 
 function statusCard(content: StatusCardContent): HTMLElement {
   const heading = element("div", "status-card__heading", [
@@ -107,8 +109,8 @@ function statusCard(content: StatusCardContent): HTMLElement {
     element("h2", "status-card__title", [content.title]),
   ]);
   const actions = element("div", "status-card__actions", content.actions);
-  const livePanel = content.livePanel ? [content.livePanel.element] : [];
-  return element("section", "status-card", [heading, ...content.body, actions, ...livePanel]);
+  const panels = (content.panels ?? []).map((panel) => panel.element);
+  return element("section", "status-card", [heading, ...content.body, actions, ...panels]);
 }
 
 function paragraph(text: string): HTMLParagraphElement {

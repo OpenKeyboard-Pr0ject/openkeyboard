@@ -11,6 +11,10 @@ export function element<Tag extends keyof HTMLElementTagNameMap>(
   return created;
 }
 
+export function detailRow(label: string, value: string): HTMLElement[] {
+  return [element("dt", "details__label", [label]), element("dd", "details__value", [value])];
+}
+
 export function actionButton(label: string, variant: "primary" | "secondary", onClick: () => void): HTMLButtonElement {
   const button = element("button", `button button--${variant}`, [label]);
   button.type = "button";

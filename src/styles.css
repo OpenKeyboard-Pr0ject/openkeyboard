@@ -143,15 +143,61 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.live-keys {
+.panel {
   margin-top: 24px;
   padding-top: 20px;
   border-top: 1px solid var(--color-border);
 }
 
-.live-keys__title {
-  margin: 0 0 12px;
+.panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.panel-heading__title {
+  margin: 0;
   font-size: 1rem;
+}
+
+.panel-heading .button {
+  padding: 6px 12px;
+  font-size: 0.875rem;
+}
+
+.panel__message {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.profile__name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-weight: 600;
+}
+
+.profile__swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.profile__slot {
+  color: var(--color-text-muted);
+  font-weight: 400;
+  font-size: 0.875rem;
+}
+
+.profile__subtitle {
+  margin: 20px 0 0;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  font-weight: 600;
 }
 
 .live-keys__list {
@@ -159,11 +205,6 @@ body {
   flex-direction: column;
   gap: 8px;
   min-height: 48px;
-}
-
-.live-keys__message {
-  margin: 0;
-  color: var(--color-text-muted);
 }
 
 .key-meter {

@@ -1,5 +1,6 @@
 import { hasCollection } from "../../hid/collections";
 import type { AnalogKeySource } from "../../keyboard/analog-keys";
+import type { KeyboardProfileReader } from "../../keyboard/keyboard-profile";
 import { decodeFirmwareVersion } from "../../protocol/wooting/wooting-codec";
 import { WootingCommandChannel } from "../../protocol/wooting/wooting-command-channel";
 import {
@@ -13,14 +14,17 @@ import {
 } from "../../protocol/wooting/wooting-constants";
 import type { AuthorizedDeviceLister, KeyboardDriver, KeyboardIdentity, KeyboardSession } from "../keyboard-driver";
 import { WootingAnalogKeySource } from "./wooting-analog-key-source";
+import { WootingProfileReader } from "./wooting-profile-reader";
 
 class WootingKeyboardSession implements KeyboardSession {
   readonly analogKeys: AnalogKeySource;
+  readonly profiles: KeyboardProfileReader;
   private readonly commands: WootingCommandChannel;
 
   constructor(readonly device: HIDDevice, listAuthorizedDevices: AuthorizedDeviceLister) {
     this.commands = new WootingCommandChannel(device);
     this.analogKeys = new WootingAnalogKeySource(device, listAuthorizedDevices);
+    this.profiles = new WootingProfileReader(this.commands);
   }
 
   async readIdentity(): Promise<KeyboardIdentity> {

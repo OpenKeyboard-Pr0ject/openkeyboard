@@ -2,10 +2,11 @@ import type { AnalogKeyReading, AnalogKeySource, AnalogKeySubscription } from ".
 import { keyLabel } from "../keyboard/hid-key-names";
 import { describeError } from "../shared/describe-error";
 import { actionButton, element } from "./dom";
+import type { Panel } from "./panel";
 
 const IDLE_MESSAGE = "Press any key to see how far it travels.";
 
-export class LiveKeyPanel {
+export class LiveKeyPanel implements Panel {
   readonly element: HTMLElement;
   private readonly keyList: HTMLElement;
   private subscription: AnalogKeySubscription | undefined;
@@ -18,7 +19,8 @@ export class LiveKeyPanel {
     private readonly requestAccess: () => void,
   ) {
     this.keyList = element("div", "live-keys__list", [idleMessage()]);
-    this.element = element("section", "live-keys", [element("h3", "live-keys__title", ["Live key input"]), this.keyList]);
+    const heading = element("div", "panel-heading", [element("h3", "panel-heading__title", ["Live key input"])]);
+    this.element = element("section", "panel", [heading, this.keyList]);
     void this.start();
   }
 
@@ -54,7 +56,7 @@ export class LiveKeyPanel {
 
   private showAccessProblem(reason: string): void {
     this.keyList.replaceChildren(
-      element("p", "live-keys__message", [reason]),
+      element("p", "panel__message", [reason]),
       actionButton("Grant access", "primary", this.requestAccess),
     );
   }
@@ -76,5 +78,5 @@ function byMatrixPosition(first: AnalogKeyReading, second: AnalogKeyReading): nu
 }
 
 function idleMessage(): HTMLElement {
-  return element("p", "live-keys__message", [IDLE_MESSAGE]);
+  return element("p", "panel__message", [IDLE_MESSAGE]);
 }

@@ -5,10 +5,20 @@ import {
   decodeCurrentProfileIndex,
   decodeKeyMapping,
   decodeProfileMetadata,
+  decodeProfileSettings,
   matrixKeyAt,
+  wootingTravelToMillimeters,
 } from "../../src/protocol/wooting/wooting-profile-codec";
 import { WootingProtocolError } from "../../src/protocol/wooting/wooting-codec";
-import { actuationProfilePayload, keyMappingPayload, profileMetadataPayload } from "../fakes/wooting-80he-captures";
+import {
+  actuationProfilePayload,
+  keyboardProfileContinuousOffPayload,
+  keyboardProfilePayload,
+  keyboardProfileRapidTriggerOffPayload,
+  keyboardProfileSensitivityLoweredPayload,
+  keyMappingPayload,
+  profileMetadataPayload,
+} from "../fakes/wooting-80he-captures";
 
 describe("decodeCurrentProfileIndex", () => {
   it("reads the active profile slot from the first payload byte", () => {
@@ -55,6 +65,41 @@ describe("decodeKeyMapping", () => {
 
   it("falls back to the matrix position for keys without a HID usage", () => {
     expect(labelAt(0, 14)).toBe("Row 0, Col 14");
+  });
+});
+
+describe("decodeProfileSettings", () => {
+  it("reads the TenZ profile with Rapid Trigger and Continuous Rapid Trigger on", () => {
+    expect(decodeProfileSettings(keyboardProfilePayload)).toEqual({
+      actuationRaw: 0x4fd0,
+      rapidTriggerEnabled: true,
+      rapidTriggerSensitivityRaw: 0x4686,
+      continuousRapidTriggerEnabled: true,
+    });
+  });
+
+  it("reports Continuous Rapid Trigger off after it was switched off in Wootility", () => {
+    expect(decodeProfileSettings(keyboardProfileContinuousOffPayload).continuousRapidTriggerEnabled).toBe(false);
+  });
+
+  it("reports Rapid Trigger off after it was switched off in Wootility", () => {
+    expect(decodeProfileSettings(keyboardProfileRapidTriggerOffPayload).rapidTriggerEnabled).toBe(false);
+  });
+
+  it("reads the lowered Rapid Trigger sensitivity", () => {
+    expect(decodeProfileSettings(keyboardProfileSensitivityLoweredPayload).rapidTriggerSensitivityRaw).toBe(0x4333);
+  });
+});
+
+describe("wootingTravelToMillimeters", () => {
+  it.each([
+    [0x4fd0, 1.0],
+    [0x4686, 0.4],
+    [0x4666, 0.4],
+    [0x4333, 0.2],
+    [0x6fef, 3.0],
+  ])("converts raw travel 0x%s to the %s mm Wootility shows", (raw, millimeters) => {
+    expect(wootingTravelToMillimeters(raw)).toBe(millimeters);
   });
 });
 
