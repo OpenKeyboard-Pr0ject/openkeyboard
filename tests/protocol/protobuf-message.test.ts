@@ -26,7 +26,13 @@ describe("ProtobufMessage", () => {
   it("reads packed repeated varints", () => {
     const message = ProtobufMessage.decode(payloadOf("0a03017f02"));
 
-    expect(message.packedVarints(1)).toEqual([1, 127, 2]);
+    expect(message.repeatedVarints(1)).toEqual([1, 127, 2]);
+  });
+
+  it("reads repeated varints that are not packed", () => {
+    const message = ProtobufMessage.decode(payloadOf("0801087f0802"));
+
+    expect(message.repeatedVarints(1)).toEqual([1, 127, 2]);
   });
 
   it("returns every occurrence of a repeated message field", () => {

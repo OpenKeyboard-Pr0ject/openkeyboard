@@ -31,11 +31,28 @@ export const keyMappingPayload = payloadOf([
   "0a170a15636665f629ff29ff29f56967e7ff4d4e4cffffffff",
 ].join(""));
 export const keyboardProfilePayload = payloadOf("0a1408d09f011001180120868d012800300238004800");
+export const keyboardProfileCurrentPayload = payloadOf("0a1408d09f011001180120e68c012800300238004800");
+export const wootilitySensitivityHalfMillimeterPayload = payloadOf("0a1408d09f0110011801208090012800300238004800");
+export const wootilitySensitivityHalfMillimeterReport = payloadOf(
+  "d1da110116000a1408d09f0110011801208090012800300238004800",
+);
 export const keyboardProfileContinuousOffPayload = payloadOf("0a1408d09f011001180120e68c012800300238014800");
 export const keyboardProfileRapidTriggerOffPayload = payloadOf("0a1408d09f011001180020868d012800300238004800");
 export const keyboardProfileSensitivityLoweredPayload = payloadOf("0a1408d09f011001180120b386012800300238014800");
 
 export const currentProfileIndexPayload = payloadOf("0000");
+export const emptyPayload = payloadOf("");
+
+export const typingProfileMetadataPayload = payloadOf(
+  "0a0e547970696e672050726f66696c65120708d001100718071a0c776f6f743a703a626c61636b",
+);
+export const typingProfileSettingsPayload = payloadOf("0a1408ffdf011001180020e68c012800300238014800");
+
+export const ultraProfileMetadataPayload = payloadOf(
+  "0a1254656e5a20556c7472612050726f66696c65120708ff01102818281a12737769746368793a67616d6572556c747261",
+);
+export const ultraProfileSettingsPayload = payloadOf("0a0e083f10011801201a280138004801");
+export const ultraProfileActuationPayload = payloadOf("12180a16c234e134e234e334a03580fe02c0fe02e0fe02a6ff02");
 
 export function replyCarrying(command: number, payload: Uint8Array): Uint8Array {
   const reply = new Uint8Array(6 + payload.length);

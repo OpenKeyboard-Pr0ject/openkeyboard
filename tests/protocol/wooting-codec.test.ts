@@ -11,13 +11,24 @@ import { firmwareVersionReply, rejectedCommandReply } from "../fakes/wooting-80h
 
 describe("encodeWootingCommand", () => {
   it("starts with the command magic followed by the command id", () => {
-    const command = encodeWootingCommand(WootingCommand.getFirmwareVersion, 0);
+    const command = encodeWootingCommand(WootingCommand.getFirmwareVersion, [], 0);
 
     expect([...command]).toEqual([0xd1, 0xda, 0x01, 0, 0, 0, 0]);
   });
 
+  it("places parameter bytes right after the command id", () => {
+    const command = encodeWootingCommand(WootingCommand.getKeyboardProfile, [2], 0);
+
+    expect([...command]).toEqual([0xd1, 0xda, 0x27, 0x02, 0, 0, 0]);
+  });
+
+  it("rejects more parameter bytes than the command layout holds", () => {
+    expect(() => encodeWootingCommand(WootingCommand.getKeyboardProfile, [1, 2, 3, 4, 5], 0))
+      .toThrow(WootingProtocolError);
+  });
+
   it("pads the command to the declared feature report length", () => {
-    const command = encodeWootingCommand(WootingCommand.getFirmwareVersion, 64);
+    const command = encodeWootingCommand(WootingCommand.getFirmwareVersion, [], 64);
 
     expect(command.length).toBe(64);
   });

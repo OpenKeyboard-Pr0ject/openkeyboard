@@ -49,6 +49,7 @@ describe("KeyboardConnection", () => {
     expect(hid.requestedFilters).toEqual([
       { vendorId: 0x31e3, usagePage: 0xff55, usage: 0x01 },
       { vendorId: 0x31e3, usagePage: 0xff53, usage: 0x01 },
+      { usagePage: 0xff60, usage: 0x61 },
     ]);
   });
 
@@ -58,7 +59,7 @@ describe("KeyboardConnection", () => {
 
     await connection.start();
 
-    expect(states.at(-1)).toMatchObject({ kind: "connected", analogKeys: expect.anything() });
+    expect(states.at(-1)).toMatchObject({ kind: "connected", capabilities: { analogKeys: expect.anything() } });
   });
 
   it("connects to the keyboard the user picked", async () => {

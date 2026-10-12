@@ -17,7 +17,9 @@ import {
   keyboardProfileRapidTriggerOffPayload,
   keyboardProfileSensitivityLoweredPayload,
   keyMappingPayload,
+  payloadOf,
   profileMetadataPayload,
+  ultraProfileActuationPayload,
 } from "../fakes/wooting-80he-captures";
 
 describe("decodeCurrentProfileIndex", () => {
@@ -98,8 +100,45 @@ describe("wootingTravelToMillimeters", () => {
     [0x4666, 0.4],
     [0x4333, 0.2],
     [0x6fef, 3.0],
-  ])("converts raw travel 0x%s to the %s mm Wootility shows", (raw, millimeters) => {
+    [0x6fff, 3.0],
+  ])("converts precise raw travel 0x%s to %s mm", (raw, millimeters) => {
     expect(wootingTravelToMillimeters(raw)).toBe(millimeters);
+  });
+
+  it.each([
+    [0x1a, 0.4],
+    [0x3f, 1.0],
+    [0xbf, 3.0],
+    [0xff, 4.0],
+  ])("converts legacy 8-bit raw travel 0x%s to %s mm", (raw, millimeters) => {
+    expect(wootingTravelToMillimeters(raw)).toBe(millimeters);
+  });
+});
+
+describe("decodeActuationOverrides with the unpacked list Wootility writes", () => {
+  const wootilityWritePayload = payloadOf(
+    "2236088080bcff0608c080bcff0608c28098b40408e080bcff0608e18098b40408e28098b40408e38098b40408a08198b40408a681bcff06",
+  );
+
+  it("reads the same keys as the packed list the keyboard returns", () => {
+    expect(decodeActuationOverrides(wootilityWritePayload)).toEqual(decodeActuationOverrides(actuationProfilePayload));
+  });
+});
+
+describe("decodeActuationOverrides with the legacy 8-bit layout", () => {
+  const overrides = decodeActuationOverrides(ultraProfileActuationPayload);
+
+  it("separates the 8-bit actuation value from the matrix position", () => {
+    expect(overrides.slice(0, 2)).toEqual([
+      { matrixPosition: 0x42, actuationRaw: 0x1a },
+      { matrixPosition: 0x61, actuationRaw: 0x1a },
+    ]);
+  });
+
+  it("lists every key of the TenZ Ultra profile", () => {
+    expect(overrides.map((override) => override.matrixPosition)).toEqual([
+      0x42, 0x61, 0x62, 0x63, 0xa0, 0x00, 0x40, 0x60, 0xa6,
+    ]);
   });
 });
 

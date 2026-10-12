@@ -1,56 +1,104 @@
 import { describe, expect, it } from "vitest";
 import { WootingProfileReader } from "../../src/drivers/wooting/wooting-profile-reader";
 import { keyLabel } from "../../src/keyboard/hid-key-names";
-import type { KeyboardProfile } from "../../src/keyboard/keyboard-profile";
 import { WootingCommandChannel } from "../../src/protocol/wooting/wooting-command-channel";
 import { WootingCommand } from "../../src/protocol/wooting/wooting-constants";
 import { FakeHidDevice } from "../fakes/fake-hid-device";
 import {
   actuationProfilePayload,
   currentProfileIndexPayload,
+  emptyPayload,
   keyboardProfilePayload,
   keyMappingPayload,
   profileMetadataPayload,
   replyCarrying,
+  typingProfileMetadataPayload,
+  typingProfileSettingsPayload,
+  ultraProfileActuationPayload,
+  ultraProfileMetadataPayload,
+  ultraProfileSettingsPayload,
 } from "../fakes/wooting-80he-captures";
 
-const payloadsByCommand = new Map<number, Uint8Array>([
-  [WootingCommand.getCurrentProfileIndex, currentProfileIndexPayload],
-  [WootingCommand.getProfileMetadata, profileMetadataPayload],
-  [WootingCommand.getKeyboardProfile, keyboardProfilePayload],
-  [WootingCommand.getKeyMapping, keyMappingPayload],
-  [WootingCommand.getActuationProfile, actuationProfilePayload],
-]);
+const PROFILE_SLOT_PARAMETER_INDEX = 3;
 
-function tenZProfileKeyboard(): FakeHidDevice {
-  return new FakeHidDevice({
-    respond: (_reportId, data) => {
-      const payload = payloadsByCommand.get(data[2]);
-      return payload ? replyCarrying(data[2], payload) : undefined;
-    },
-  });
+const payloadsBySlot: ReadonlyArray<ReadonlyMap<number, Uint8Array>> = [
+  new Map([
+    [WootingCommand.getProfileMetadata, profileMetadataPayload],
+    [WootingCommand.getKeyboardProfile, keyboardProfilePayload],
+    [WootingCommand.getActuationProfile, actuationProfilePayload],
+  ]),
+  new Map([
+    [WootingCommand.getProfileMetadata, typingProfileMetadataPayload],
+    [WootingCommand.getKeyboardProfile, typingProfileSettingsPayload],
+    [WootingCommand.getActuationProfile, emptyPayload],
+  ]),
+  new Map([
+    [WootingCommand.getProfileMetadata, ultraProfileMetadataPayload],
+    [WootingCommand.getKeyboardProfile, ultraProfileSettingsPayload],
+    [WootingCommand.getActuationProfile, ultraProfileActuationPayload],
+  ]),
+];
+
+function payloadFor(command: number, slot: number): Uint8Array {
+  if (command === WootingCommand.getCurrentProfileIndex) return currentProfileIndexPayload;
+  if (command === WootingCommand.getKeyMapping) return slot === 0 ? keyMappingPayload : emptyPayload;
+  return payloadsBySlot[slot]?.get(command) ?? emptyPayload;
 }
 
-async function readTenZProfile(): Promise<KeyboardProfile> {
-  const channel = new WootingCommandChannel(tenZProfileKeyboard().asHidDevice());
-  return new WootingProfileReader(channel).readActiveProfile();
+function readerForTheUsers80he(): WootingProfileReader {
+  const keyboard = new FakeHidDevice({
+    respond: (_reportId, data) => replyCarrying(data[2], payloadFor(data[2], data[PROFILE_SLOT_PARAMETER_INDEX])),
+  });
+  return new WootingProfileReader(new WootingCommandChannel(keyboard.asHidDevice()));
 }
 
 describe("WootingProfileReader", () => {
-  it("reads the name, color, slot and actuation point of the active profile", async () => {
-    const profile = await readTenZProfile();
-
-    expect(profile).toMatchObject({ slot: 0, name: "TenZ Profile", color: "#ff2828", actuationMillimeters: 1.0 });
+  it("reads which slot is active", async () => {
+    await expect(readerForTheUsers80he().readActiveSlot()).resolves.toBe(0);
   });
 
-  it("reads the Rapid Trigger settings of the active profile", async () => {
-    const profile = await readTenZProfile();
+  it("lists every stored profile and stops at the first empty slot", async () => {
+    const profiles = await readerForTheUsers80he().listProfiles();
 
-    expect(profile.rapidTrigger).toEqual({ enabled: true, sensitivityMillimeters: 0.4, continuous: true });
+    expect(profiles).toEqual([
+      { slot: 0, name: "TenZ Profile", color: "#ff2828" },
+      { slot: 1, name: "Typing Profile", color: "#d00707" },
+      { slot: 2, name: "TenZ Ultra Profile", color: "#ff2828" },
+    ]);
   });
 
-  it("names every key that has its own actuation point", async () => {
-    const profile = await readTenZProfile();
+  it("reads the actuation point and Rapid Trigger of the TenZ profile", async () => {
+    const profile = await readerForTheUsers80he().readProfile(0);
+
+    expect(profile).toMatchObject({
+      name: "TenZ Profile",
+      actuationMillimeters: 1.0,
+      rapidTrigger: { enabled: true, sensitivityMillimeters: 0.4, continuous: true },
+    });
+  });
+
+  it("reads the typing profile with Rapid Trigger off and no per-key actuation", async () => {
+    const profile = await readerForTheUsers80he().readProfile(1);
+
+    expect(profile).toMatchObject({
+      actuationMillimeters: 3.0,
+      rapidTrigger: { enabled: false },
+      keyActuations: [],
+    });
+  });
+
+  it("reads the legacy 8-bit values of the TenZ Ultra profile", async () => {
+    const profile = await readerForTheUsers80he().readProfile(2);
+
+    expect({
+      actuation: profile.actuationMillimeters,
+      sensitivity: profile.rapidTrigger.sensitivityMillimeters,
+      firstKeys: profile.keyActuations.slice(0, 2).map((entry) => `${keyLabel(entry.key)}=${entry.actuationMillimeters}`),
+    }).toEqual({ actuation: 1.0, sensitivity: 0.4, firstKeys: ["W=0.4", "A=0.4"] });
+  });
+
+  it("names every key of the TenZ profile that has its own actuation point", async () => {
+    const profile = await readerForTheUsers80he().readProfile(0);
 
     const summary = profile.keyActuations.map((entry) => `${keyLabel(entry.key)}=${entry.actuationMillimeters}`);
 

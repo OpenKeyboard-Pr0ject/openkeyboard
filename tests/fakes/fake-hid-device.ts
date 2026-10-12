@@ -14,19 +14,24 @@ export interface FakeHidDeviceOptions {
   readonly productName?: string;
   readonly collections?: HIDCollectionInfo[];
   readonly respond?: FeatureReportResponder;
+  readonly receiveOutputReport?: (reportId: number, data: Uint8Array) => void;
   readonly failFeatureReports?: boolean;
 }
 
 const COMMAND_REPORT_ID = 1;
 const COMMAND_REPORT_BYTES = 7;
 
+function byteReport(reportId: number, byteCount: number): HIDReportInfo {
+  return { reportId, items: [{ reportSize: 8, reportCount: byteCount }] };
+}
+
 export const wootingConfigCollection: HIDCollectionInfo = {
   usagePage: WOOTING_CONFIG_USAGE_PAGE,
   usage: WOOTING_CONFIG_USAGE,
   children: [],
   inputReports: [],
-  outputReports: [],
-  featureReports: [{ reportId: COMMAND_REPORT_ID, items: [{ reportSize: 8, reportCount: COMMAND_REPORT_BYTES }] }],
+  outputReports: [byteReport(3, 254), byteReport(1, 32), byteReport(2, 62)],
+  featureReports: [byteReport(COMMAND_REPORT_ID, COMMAND_REPORT_BYTES)],
 };
 
 export const wootingAnalogCollection: HIDCollectionInfo = {
@@ -45,6 +50,7 @@ export class FakeHidDevice {
   readonly productName: string;
   readonly collections: HIDCollectionInfo[];
   readonly sentFeatureReports: Array<{ reportId: number; data: Uint8Array }> = [];
+  readonly sentOutputReports: Array<{ reportId: number; data: Uint8Array }> = [];
   private readonly inputListeners = new Set<InputReportListener>();
 
   constructor(private readonly options: FakeHidDeviceOptions = {}) {
@@ -64,6 +70,12 @@ export class FakeHidDevice {
 
   async forget(): Promise<void> {
     this.opened = false;
+  }
+
+  async sendReport(reportId: number, data: BufferSource): Promise<void> {
+    const bytes = toBytes(data);
+    this.sentOutputReports.push({ reportId, data: bytes });
+    this.options.receiveOutputReport?.(reportId, bytes);
   }
 
   async sendFeatureReport(reportId: number, data: BufferSource): Promise<void> {

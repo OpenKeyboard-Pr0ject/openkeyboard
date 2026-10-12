@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { featureReportByteLength, hasCollection } from "../../src/hid/collections";
+import {
+  featureReportByteLength,
+  hasCollection,
+  NoFittingOutputReportError,
+  smallestOutputReportHolding,
+} from "../../src/hid/collections";
 import { FakeHidDevice, wootingConfigCollection } from "../fakes/fake-hid-device";
 
 const nestedCollections: HIDCollectionInfo[] = [
@@ -11,6 +16,16 @@ describe("hasCollection", () => {
     const device = new FakeHidDevice({ collections: nestedCollections }).asHidDevice();
 
     expect(hasCollection(device, 0xff55, 0x01)).toBe(true);
+  });
+});
+
+describe("smallestOutputReportHolding", () => {
+  it("picks the smallest declared output report that fits", () => {
+    expect(smallestOutputReportHolding(new FakeHidDevice().asHidDevice(), 40)).toEqual({ reportId: 2, byteLength: 62 });
+  });
+
+  it("rejects data larger than every declared output report", () => {
+    expect(() => smallestOutputReportHolding(new FakeHidDevice().asHidDevice(), 300)).toThrow(NoFittingOutputReportError);
   });
 });
 
