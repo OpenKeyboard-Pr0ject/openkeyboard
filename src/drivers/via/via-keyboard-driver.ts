@@ -1,7 +1,12 @@
 import { hasCollection } from "../../hid/collections";
 import type { KeyboardDefinitionLoader, KeymapReader } from "../../keyboard/keymap";
 import type { QmkKeycodeGeneration } from "../../protocol/via/qmk-keycodes";
-import { decodeVialKeyboardId, isVialKeyboardIdReply, readUint16BigEndian, type VialKeyboardId } from "../../protocol/via/via-codec";
+import {
+  decodeVialKeyboardId,
+  isVialKeyboardIdReply,
+  readUint16BigEndian,
+  type VialKeyboardId,
+} from "../../protocol/via/via-codec";
 import { ViaCommandChannel } from "../../protocol/via/via-command-channel";
 import {
   FIRST_VIA_PROTOCOL_WITH_MODERN_KEYCODES,

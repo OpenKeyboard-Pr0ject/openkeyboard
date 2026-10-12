@@ -3,6 +3,7 @@ import type {
   KeyboardProfile,
   KeyboardProfileReader,
   KeyboardProfileSummary,
+  KeyRapidTrigger,
   RapidTriggerSettings,
 } from "../../keyboard/keyboard-profile";
 import type { MatrixKey } from "../../keyboard/matrix-key";
@@ -19,6 +20,7 @@ import {
   type WootingProfileMetadata,
   type WootingProfileSettings,
 } from "../../protocol/wooting/wooting-profile-codec";
+import { decodeRapidTriggerKeys } from "../../protocol/wooting/wooting-per-key-codec";
 
 const MAX_PROFILE_SLOTS = 4;
 const BASE_LAYOUT_SLOT = 0;
@@ -43,13 +45,17 @@ export class WootingProfileReader implements KeyboardProfileReader {
   async readProfile(slot: number): Promise<KeyboardProfile> {
     const metadata = await this.readMetadata(slot);
     const settings = decodeProfileSettings(await this.commands.request(WootingCommand.getKeyboardProfile, [slot]));
+    const rapidTrigger = rapidTriggerFrom(settings);
+    const layout = await this.readLayout(slot);
     return {
       slot,
       name: metadata.name,
       color: metadata.color,
       actuationMillimeters: wootingTravelToMillimeters(settings.actuationRaw),
-      rapidTrigger: rapidTriggerFrom(settings),
-      keyActuations: await this.readKeyActuations(slot),
+      rapidTrigger,
+      keyActuations: await this.readKeyActuations(slot, layout),
+      keyRapidTriggers: await this.readKeyRapidTriggers(slot, layout, rapidTrigger.sensitivityMillimeters),
+      layout,
     };
   }
 
@@ -63,12 +69,26 @@ export class WootingProfileReader implements KeyboardProfileReader {
     return this.readLayout(BASE_LAYOUT_SLOT);
   }
 
-  private async readKeyActuations(slot: number): Promise<KeyActuation[]> {
-    const layout = await this.readLayout(slot);
+  private async readKeyActuations(slot: number, layout: readonly MatrixKey[]): Promise<KeyActuation[]> {
     const overrides = decodeActuationOverrides(await this.commands.request(WootingCommand.getActuationProfile, [slot]));
     return overrides.map((override) => ({
       key: matrixKeyAt(layout, override.matrixPosition),
       actuationMillimeters: wootingTravelToMillimeters(override.actuationRaw),
+    }));
+  }
+
+  private async readKeyRapidTriggers(
+    slot: number,
+    layout: readonly MatrixKey[],
+    profileSensitivityMillimeters: number,
+  ): Promise<KeyRapidTrigger[]> {
+    const keys = decodeRapidTriggerKeys(await this.commands.request(WootingCommand.getPerKeyRapidTrigger, [slot]));
+    return keys.map(({ matrixPosition, setting }) => ({
+      key: matrixKeyAt(layout, matrixPosition),
+      usesProfileSensitivity: setting.kind === "profile-sensitivity",
+      sensitivityMillimeters: setting.kind === "custom-sensitivity"
+        ? wootingTravelToMillimeters(setting.sensitivityRaw)
+        : profileSensitivityMillimeters,
     }));
   }
 }

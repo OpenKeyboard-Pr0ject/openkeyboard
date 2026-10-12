@@ -92,7 +92,10 @@ export function decodeProfileSettings(payload: Uint8Array): WootingProfileSettin
   };
 }
 
-export function applyProfileSettingsChange(payload: Uint8Array, change: WootingProfileSettingsChange): Uint8Array<ArrayBuffer> {
+export function applyProfileSettingsChange(
+  payload: Uint8Array,
+  change: WootingProfileSettingsChange,
+): Uint8Array<ArrayBuffer> {
   const profile = ProtobufMessage.decode(payload);
   const updatedSettings = settingsFieldUpdates(change).reduce(
     (settings, [fieldNumber, value]) => settings.withVarint(fieldNumber, value),
@@ -111,7 +114,8 @@ function settingsFieldUpdates(change: WootingProfileSettingsChange): Array<reado
     updates.push([ProfileSettingsField.rapidTriggerSensitivity, change.rapidTriggerSensitivityRaw]);
   }
   if (change.continuousRapidTriggerEnabled !== undefined) {
-    updates.push([ProfileSettingsField.continuousRapidTriggerDisabled, change.continuousRapidTriggerEnabled ? DISABLED : ENABLED]);
+    const continuousDisabled = change.continuousRapidTriggerEnabled ? DISABLED : ENABLED;
+    updates.push([ProfileSettingsField.continuousRapidTriggerDisabled, continuousDisabled]);
   }
   return updates;
 }

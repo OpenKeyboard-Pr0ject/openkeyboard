@@ -104,6 +104,14 @@ export class ProtobufMessage {
     return this.valuesOf(fieldNumber).flatMap((value) => (typeof value === "number" ? [value] : unpackVarints(value)));
   }
 
+  static empty(): ProtobufMessage {
+    return new ProtobufMessage([]);
+  }
+
+  has(fieldNumber: number): boolean {
+    return this.fields.some((field) => field.fieldNumber === fieldNumber);
+  }
+
   withVarint(fieldNumber: number, value: number): ProtobufMessage {
     return this.withField({ fieldNumber, wireType: WIRE_VARINT, value });
   }
@@ -112,17 +120,41 @@ export class ProtobufMessage {
     return this.withField({ fieldNumber, wireType: WIRE_LENGTH_DELIMITED, value: message.encode() });
   }
 
+  withRepeatedVarints(fieldNumber: number, values: readonly number[]): ProtobufMessage {
+    return this.withRepeated(fieldNumber, values.map((value) => ({ fieldNumber, wireType: WIRE_VARINT, value })));
+  }
+
+  withRepeatedMessages(fieldNumber: number, messages: readonly ProtobufMessage[]): ProtobufMessage {
+    return this.withRepeated(
+      fieldNumber,
+      messages.map((message) => ({ fieldNumber, wireType: WIRE_LENGTH_DELIMITED, value: message.encode() })),
+    );
+  }
+
+  without(fieldNumber: number): ProtobufMessage {
+    return new ProtobufMessage(this.fields.filter((field) => field.fieldNumber !== fieldNumber));
+  }
+
   encode(): Uint8Array<ArrayBuffer> {
     return Uint8Array.from(this.fields.flatMap(encodeField));
   }
 
   private withField(replacement: ProtobufField): ProtobufMessage {
     const index = this.fields.findIndex((field) => field.fieldNumber === replacement.fieldNumber);
-    if (index >= 0) return new ProtobufMessage(this.fields.map((field, position) => (position === index ? replacement : field)));
-    const insertAt = this.fields.findIndex((field) => field.fieldNumber > replacement.fieldNumber);
-    const fields = [...this.fields];
-    fields.splice(insertAt < 0 ? fields.length : insertAt, 0, replacement);
-    return new ProtobufMessage(fields);
+    if (index >= 0) {
+      return new ProtobufMessage(this.fields.map((field, position) => (position === index ? replacement : field)));
+    }
+    const insertAt = insertionIndexFor(this.fields, replacement.fieldNumber);
+    return new ProtobufMessage([...this.fields.slice(0, insertAt), replacement, ...this.fields.slice(insertAt)]);
+  }
+
+  private withRepeated(fieldNumber: number, replacements: readonly ProtobufField[]): ProtobufMessage {
+    const firstIndex = this.fields.findIndex((field) => field.fieldNumber === fieldNumber);
+    const remaining = this.fields.filter((field) => field.fieldNumber !== fieldNumber);
+    const insertAt = firstIndex >= 0
+      ? this.fields.slice(0, firstIndex).filter((field) => field.fieldNumber !== fieldNumber).length
+      : insertionIndexFor(remaining, fieldNumber);
+    return new ProtobufMessage([...remaining.slice(0, insertAt), ...replacements, ...remaining.slice(insertAt)]);
   }
 
   private valuesOf(fieldNumber: number): ProtobufFieldValue[] {
@@ -132,6 +164,11 @@ export class ProtobufMessage {
   private lastValue(fieldNumber: number): ProtobufFieldValue | undefined {
     return this.valuesOf(fieldNumber).at(-1);
   }
+}
+
+function insertionIndexFor(fields: readonly ProtobufField[], fieldNumber: number): number {
+  const index = fields.findIndex((field) => field.fieldNumber > fieldNumber);
+  return index < 0 ? fields.length : index;
 }
 
 function encodeField(field: ProtobufField): number[] {

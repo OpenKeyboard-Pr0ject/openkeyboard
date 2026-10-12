@@ -77,7 +77,8 @@ function layoutOptionSizes(labels: unknown): number[] {
 }
 
 function isMatrixKey(key: KleKey): boolean {
-  return !key.decal && key.labels[ENCODER_LABEL_SLOT] !== ENCODER_MARKER && /^\d+,\d+$/.test(key.labels[MATRIX_LABEL_SLOT]);
+  const isEncoder = key.labels[ENCODER_LABEL_SLOT] === ENCODER_MARKER;
+  return !key.decal && !isEncoder && /^\d+,\d+$/.test(key.labels[MATRIX_LABEL_SLOT]);
 }
 
 function toDefinitionKey(key: KleKey): DefinitionKey {
@@ -109,7 +110,9 @@ function alignToOrigin(keys: readonly DefinitionKey[]): PhysicalKey[] {
 function parseJsonObject(definitionJson: string): DefinitionJson {
   try {
     const parsed: unknown = JSON.parse(definitionJson);
-    if (typeof parsed !== "object" || parsed === null) throw new KeyboardDefinitionError("The definition is not an object.");
+    if (typeof parsed !== "object" || parsed === null) {
+      throw new KeyboardDefinitionError("The definition is not an object.");
+    }
     return parsed as DefinitionJson;
   } catch (error) {
     if (error instanceof KeyboardDefinitionError) throw error;

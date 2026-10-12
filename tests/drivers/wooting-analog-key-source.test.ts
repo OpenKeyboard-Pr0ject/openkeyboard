@@ -48,7 +48,8 @@ describe("WootingAnalogKeySource", () => {
 
   it("explains that access is missing when the analog interface was never authorized", async () => {
     const configInterface = new FakeHidDevice();
-    const source = new WootingAnalogKeySource(configInterface.asHidDevice(), async () => [configInterface.asHidDevice()]);
+    const authorizedDevices = async () => [configInterface.asHidDevice()];
+    const source = new WootingAnalogKeySource(configInterface.asHidDevice(), authorizedDevices);
 
     await expect(source.start(() => undefined)).rejects.toBeInstanceOf(AnalogInterfaceNotAuthorizedError);
   });

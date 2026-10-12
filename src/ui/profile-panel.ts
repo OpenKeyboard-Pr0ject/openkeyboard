@@ -1,16 +1,19 @@
 import { keyLabel } from "../keyboard/hid-key-names";
+import type { MatrixKey } from "../keyboard/matrix-key";
 import type {
-  KeyActuation,
   KeyboardProfile,
   KeyboardProfileEditor,
   KeyboardProfileReader,
   KeyboardProfileSummary,
+  KeyRapidTrigger,
   RapidTriggerSettings,
 } from "../keyboard/keyboard-profile";
 import { describeError } from "../shared/describe-error";
 import { actionButton, detailRow, element } from "./dom";
 import type { Panel } from "./panel";
 import { ProfileSettingsForm } from "./profile-settings-form";
+
+const SAVED_NOTICE = "Saved to the keyboard and confirmed by reading it back.";
 
 interface ProfileOverview {
   readonly profiles: readonly KeyboardProfileSummary[];
@@ -73,7 +76,7 @@ export class ProfilePanel implements Panel {
     if (!this.editor) return;
     const isActive = profile.slot === this.overview.activeSlot;
     const form = new ProfileSettingsForm(profile, isActive, this.editor, {
-      onSaved: (savedProfile) => this.showProfile(savedProfile, "Saved to the keyboard and confirmed by reading it back."),
+      onSaved: (savedProfile) => this.showProfile(savedProfile, SAVED_NOTICE),
       onCancel: () => this.showProfile(profile),
     });
     this.showDetails([form.element]);
@@ -108,7 +111,12 @@ function profileDetails(profile: KeyboardProfile): Node[] {
       ...detailRow("Actuation point", formatMillimeters(profile.actuationMillimeters)),
       ...rapidTriggerRows(profile.rapidTrigger),
     ]),
-    ...keyActuationGroups(profile.keyActuations),
+    ...keyGroups(
+      "Keys with their own actuation point",
+      profile.keyActuations,
+      (entry) => formatMillimeters(entry.actuationMillimeters),
+    ),
+    ...keyGroups("Keys with their own Rapid Trigger", profile.keyRapidTriggers, keyRapidTriggerLabel),
   ];
 }
 
@@ -120,23 +128,23 @@ function rapidTriggerRows(rapidTrigger: RapidTriggerSettings): HTMLElement[] {
   ];
 }
 
-function keyActuationGroups(keyActuations: readonly KeyActuation[]): Node[] {
-  if (keyActuations.length === 0) return [];
-  const rows = [...groupByActuation(keyActuations).entries()]
-    .sort(([first], [second]) => first - second)
-    .flatMap(([millimeters, keys]) => detailRow(
-      formatMillimeters(millimeters),
-      keys.map((keyActuation) => keyLabel(keyActuation.key)).join(", "),
-    ));
-  return [element("h4", "profile__subtitle", ["Keys with their own actuation point"]), element("dl", "details", rows)];
+function keyGroups<Entry extends { readonly key: MatrixKey }>(
+  title: string,
+  entries: readonly Entry[],
+  labelOf: (entry: Entry) => string,
+): Node[] {
+  if (entries.length === 0) return [];
+  const groups = new Map<string, Entry[]>();
+  for (const entry of entries) groups.set(labelOf(entry), [...(groups.get(labelOf(entry)) ?? []), entry]);
+  const rows = [...groups.entries()]
+    .sort(([first], [second]) => first.localeCompare(second, "en-US", { numeric: true }))
+    .flatMap(([label, grouped]) => detailRow(label, grouped.map((entry) => keyLabel(entry.key)).join(", ")));
+  return [element("h4", "profile__subtitle", [title]), element("dl", "details", rows)];
 }
 
-function groupByActuation(keyActuations: readonly KeyActuation[]): Map<number, KeyActuation[]> {
-  const groups = new Map<number, KeyActuation[]>();
-  for (const keyActuation of keyActuations) {
-    groups.set(keyActuation.actuationMillimeters, [...(groups.get(keyActuation.actuationMillimeters) ?? []), keyActuation]);
-  }
-  return groups;
+function keyRapidTriggerLabel(keyRapidTrigger: KeyRapidTrigger): string {
+  const sensitivity = `On, ${formatMillimeters(keyRapidTrigger.sensitivityMillimeters)}`;
+  return keyRapidTrigger.usesProfileSensitivity ? `${sensitivity} (profile sensitivity)` : sensitivity;
 }
 
 function colorSwatch(color: string): HTMLElement {

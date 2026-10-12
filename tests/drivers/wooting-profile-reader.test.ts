@@ -93,7 +93,9 @@ describe("WootingProfileReader", () => {
     expect({
       actuation: profile.actuationMillimeters,
       sensitivity: profile.rapidTrigger.sensitivityMillimeters,
-      firstKeys: profile.keyActuations.slice(0, 2).map((entry) => `${keyLabel(entry.key)}=${entry.actuationMillimeters}`),
+      firstKeys: profile.keyActuations
+        .slice(0, 2)
+        .map((entry) => `${keyLabel(entry.key)}=${entry.actuationMillimeters}`),
     }).toEqual({ actuation: 1.0, sensitivity: 0.4, firstKeys: ["W=0.4", "A=0.4"] });
   });
 

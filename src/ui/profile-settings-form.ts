@@ -2,10 +2,10 @@ import type {
   KeyboardProfile,
   KeyboardProfileEditor,
   ProfileSettingsChange,
-  SettingRange,
 } from "../keyboard/keyboard-profile";
 import { describeError } from "../shared/describe-error";
-import { actionButton, element } from "./dom";
+import { actionButton, element, millimeterInput } from "./dom";
+import { KeySettingsSection } from "./key-settings-section";
 
 export interface ProfileSettingsFormCallbacks {
   readonly onSaved: (profile: KeyboardProfile) => void;
@@ -18,6 +18,7 @@ export class ProfileSettingsForm {
   private readonly rapidTriggerEnabled: HTMLInputElement;
   private readonly sensitivity: HTMLInputElement;
   private readonly continuous: HTMLInputElement;
+  private readonly keySettings: KeySettingsSection;
   private readonly status: HTMLElement;
   private readonly buttons: HTMLButtonElement[];
 
@@ -29,8 +30,15 @@ export class ProfileSettingsForm {
   ) {
     this.actuation = millimeterInput(profile.actuationMillimeters, editor.actuationRange);
     this.rapidTriggerEnabled = checkbox(profile.rapidTrigger.enabled);
-    this.sensitivity = millimeterInput(profile.rapidTrigger.sensitivityMillimeters, editor.rapidTriggerSensitivityRange);
+    this.sensitivity = millimeterInput(
+      profile.rapidTrigger.sensitivityMillimeters,
+      editor.rapidTriggerSensitivityRange,
+    );
     this.continuous = checkbox(profile.rapidTrigger.continuous);
+    this.keySettings = new KeySettingsSection(profile, {
+      actuation: editor.actuationRange,
+      sensitivity: editor.rapidTriggerSensitivityRange,
+    });
     this.status = element("p", "panel__message");
     this.buttons = [
       actionButton("Save to keyboard", "primary", () => void this.save()),
@@ -41,6 +49,7 @@ export class ProfileSettingsForm {
       field("Rapid Trigger", this.rapidTriggerEnabled),
       field("Rapid Trigger sensitivity (mm)", this.sensitivity),
       field("Continuous Rapid Trigger", this.continuous),
+      this.keySettings.element,
       element("p", "settings-form__note", [targetDescription(profile.name, isActiveProfile)]),
       element("div", "status-card__actions", this.buttons),
       this.status,
@@ -68,7 +77,9 @@ export class ProfileSettingsForm {
     const actuation = this.actuation.valueAsNumber;
     const sensitivity = this.sensitivity.valueAsNumber;
     const current = this.profile;
+    const keys = this.keySettings.changes();
     return {
+      ...(keys.length > 0 ? { keys } : {}),
       ...(actuation !== current.actuationMillimeters ? { actuationMillimeters: actuation } : {}),
       ...(this.rapidTriggerEnabled.checked !== current.rapidTrigger.enabled
         ? { rapidTriggerEnabled: this.rapidTriggerEnabled.checked } : {}),
@@ -82,6 +93,7 @@ export class ProfileSettingsForm {
   private setBusy(busy: boolean): void {
     [this.actuation, this.rapidTriggerEnabled, this.sensitivity, this.continuous, ...this.buttons]
       .forEach((control) => (control.disabled = busy));
+    this.keySettings.setDisabled(busy);
   }
 }
 
@@ -92,15 +104,6 @@ function targetDescription(profileName: string, isActiveProfile: boolean): strin
     : `${written} This profile is not active, so the keyboard keeps using its current profile until you switch.`;
 }
 
-function millimeterInput(value: number, range: SettingRange): HTMLInputElement {
-  const input = element("input", "settings-form__number");
-  input.type = "number";
-  input.min = String(range.min);
-  input.max = String(range.max);
-  input.step = String(range.step);
-  input.value = value.toFixed(2);
-  return input;
-}
 
 function checkbox(checked: boolean): HTMLInputElement {
   const input = element("input", "settings-form__checkbox");

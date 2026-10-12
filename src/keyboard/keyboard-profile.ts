@@ -17,10 +17,33 @@ export interface KeyboardProfileSummary {
   readonly color: string;
 }
 
+export interface KeyRapidTrigger {
+  readonly key: MatrixKey;
+  readonly sensitivityMillimeters: number;
+  readonly usesProfileSensitivity: boolean;
+}
+
 export interface KeyboardProfile extends KeyboardProfileSummary {
   readonly actuationMillimeters: number;
   readonly rapidTrigger: RapidTriggerSettings;
   readonly keyActuations: readonly KeyActuation[];
+  readonly keyRapidTriggers: readonly KeyRapidTrigger[];
+  readonly layout: readonly MatrixKey[];
+}
+
+export type KeyActuationSetting =
+  | { readonly kind: "follow-profile" }
+  | { readonly kind: "custom"; readonly millimeters: number };
+
+export type KeyRapidTriggerSetting =
+  | { readonly kind: "follow-profile" }
+  | { readonly kind: "profile-sensitivity" }
+  | { readonly kind: "custom"; readonly sensitivityMillimeters: number };
+
+export interface KeySettingsChange {
+  readonly key: MatrixKey;
+  readonly actuation?: KeyActuationSetting;
+  readonly rapidTrigger?: KeyRapidTriggerSetting;
 }
 
 export interface SettingRange {
@@ -34,6 +57,7 @@ export interface ProfileSettingsChange {
   readonly rapidTriggerEnabled?: boolean;
   readonly rapidTriggerSensitivityMillimeters?: number;
   readonly continuousRapidTrigger?: boolean;
+  readonly keys?: readonly KeySettingsChange[];
 }
 
 export interface KeyboardProfileEditor {
@@ -44,7 +68,10 @@ export interface KeyboardProfileEditor {
 
 export class SettingOutOfRangeError extends Error {
   constructor(settingName: string, value: number, range: SettingRange) {
-    super(`${settingName} must be between ${range.min} and ${range.max} mm in steps of ${range.step} mm, not ${value} mm.`);
+    super(
+      `${settingName} must be between ${range.min} and ${range.max} mm `
+      + `in steps of ${range.step} mm, not ${value} mm.`,
+    );
     this.name = "SettingOutOfRangeError";
   }
 }

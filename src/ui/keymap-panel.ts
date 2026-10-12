@@ -91,15 +91,22 @@ export class KeymapPanel implements Panel {
 function keyboardDrawing(keymap: Keymap, layer: number): HTMLElement {
   const width = Math.max(...keymap.physicalKeys.map((key) => key.x + key.width));
   const height = Math.max(...keymap.physicalKeys.map((key) => key.y + key.height));
-  const drawing = element("div", "keymap", keymap.physicalKeys.map((key) => keycap(keymap, layer, key, { width, height })));
+  const keycaps = keymap.physicalKeys.map((key) => keycap(keymap, layer, key, { width, height }));
+  const drawing = element("div", "keymap", keycaps);
   drawing.style.aspectRatio = `${width} / ${height}`;
   return drawing;
 }
 
-function keycap(keymap: Keymap, layer: number, key: PhysicalKey, board: { width: number; height: number }): HTMLElement {
+function keycap(
+  keymap: Keymap,
+  layer: number,
+  key: PhysicalKey,
+  board: { width: number; height: number },
+): HTMLElement {
   const assignment = keymap.layers[layer]?.[key.matrixRow]?.[key.matrixColumn];
   const cap = element("div", "keymap__key", [assignment?.label ?? ""]);
-  cap.title = assignment ? `${assignment.label || "None"} (${formatHex(assignment.code, 4)}), matrix ${key.matrixRow},${key.matrixColumn}` : "";
+  const matrix = `matrix ${key.matrixRow},${key.matrixColumn}`;
+  cap.title = assignment ? `${assignment.label || "None"} (${formatHex(assignment.code, 4)}), ${matrix}` : "";
   cap.style.left = `${(key.x / board.width) * 100}%`;
   cap.style.top = `${(key.y / board.height) * 100}%`;
   cap.style.width = `${(key.width / board.width) * 100}%`;

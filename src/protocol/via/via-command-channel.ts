@@ -36,7 +36,8 @@ export class ViaCommandChannel {
     try {
       await this.device.sendReport(VIA_REPORT_ID, encodeViaRequest(command, argumentBytes));
     } catch (error) {
-      pendingReply.cancel(new ViaProtocolError(`Could not send VIA command ${formatHex(command, 2)}: ${describeError(error)}`));
+      const reason = `Could not send VIA command ${formatHex(command, 2)}: ${describeError(error)}`;
+      pendingReply.cancel(new ViaProtocolError(reason));
     }
     return pendingReply.report;
   }

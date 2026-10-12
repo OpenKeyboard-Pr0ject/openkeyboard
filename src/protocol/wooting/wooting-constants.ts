@@ -14,14 +14,16 @@ export const WootingCommand = {
   getKeyboardProfile: 0x27,
   getKeyMapping: 0x30,
   getActuationProfile: 0x31,
+  getPerKeyRapidTrigger: 0x3d,
   getProfileMetadata: 0x37,
 } as const;
 
 export type WootingCommandId = (typeof WootingCommand)[keyof typeof WootingCommand];
 
 export const WootingReportType = {
-  settingsUpdateMarker: 0x1d,
   keyboardProfileSettings: 0x11,
+  perKeyActuation: 0x15,
+  perKeyRapidTrigger: 0x1d,
 } as const;
 
 export type WootingReportTypeId = (typeof WootingReportType)[keyof typeof WootingReportType];

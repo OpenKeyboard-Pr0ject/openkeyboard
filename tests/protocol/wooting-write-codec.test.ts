@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { ProtobufMessage } from "../../src/protocol/protobuf/protobuf-message";
-import { encodeWootingReport, storageForSavingToSlot, WootingProtocolError } from "../../src/protocol/wooting/wooting-codec";
+import {
+  encodeWootingReport,
+  storageForSavingToSlot,
+  WootingProtocolError,
+} from "../../src/protocol/wooting/wooting-codec";
 import { WootingReportType } from "../../src/protocol/wooting/wooting-constants";
 import {
   applyProfileSettingsChange,
@@ -77,7 +81,10 @@ describe("applyProfileSettingsChange", () => {
     const before = ProtobufMessage.decode(keyboardProfileCurrentPayload).message(1);
     const after = ProtobufMessage.decode(updated).message(1);
 
-    expect([2, 4, 5, 6, 7, 9].map((field) => after.varint(field))).toEqual([2, 4, 5, 6, 7, 9].map((field) => before.varint(field)));
+    const untouchedFields = [2, 4, 5, 6, 7, 9];
+
+    expect(untouchedFields.map((field) => after.varint(field)))
+      .toEqual(untouchedFields.map((field) => before.varint(field)));
   });
 
   it("makes no change when nothing is requested", () => {
@@ -97,7 +104,7 @@ describe("encodeWootingReport", () => {
   });
 
   it("frames a report without payload as magic, type and storage only", () => {
-    const report = encodeWootingReport(WootingReportType.settingsUpdateMarker, storageForSavingToSlot(0));
+    const report = encodeWootingReport(WootingReportType.perKeyRapidTrigger, storageForSavingToSlot(0));
 
     expect(report).toEqual(payloadOf("d1da1d01"));
   });

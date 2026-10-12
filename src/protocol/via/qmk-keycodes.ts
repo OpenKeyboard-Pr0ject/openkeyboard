@@ -14,7 +14,12 @@ const KC_TRANSPARENT = 0x0001;
 const BASIC_KEYCODE_MASK = 0xff;
 const MODS_MASK = 0x1f;
 const RIGHT_HAND_MODS = 0x10;
-const MOD_NAMES: ReadonlyArray<readonly [number, string]> = [[0x01, "Ctrl"], [0x02, "Shift"], [0x04, "Alt"], [0x08, "Win"]];
+const MOD_NAMES: ReadonlyArray<readonly [number, string]> = [
+  [0x01, "Ctrl"],
+  [0x02, "Shift"],
+  [0x04, "Alt"],
+  [0x08, "Win"],
+];
 
 const MEDIA_KEY_NAMES: ReadonlyArray<readonly [number, string]> = [
   [0xa5, "Power"], [0xa6, "Sleep"], [0xa7, "Wake"], [0xa8, "Mute"], [0xa9, "Volume Up"], [0xaa, "Volume Down"],

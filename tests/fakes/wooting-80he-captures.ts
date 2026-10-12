@@ -61,6 +61,13 @@ export function replyCarrying(command: number, payload: Uint8Array): Uint8Array 
   return reply;
 }
 
+export const typingQKeyActuationWritePayload = payloadOf("220608c18080c005");
+export const typingQKeyActuationReadPayload = payloadOf("22070a05c18080c005");
+export const typingQKeyRapidTriggerWritePayload = payloadOf("0a0408411801");
+export const typingQAndWRapidTriggerWritePayload = payloadOf("0a0808421204089993010a0408411801");
+export const typingQAndWRapidTriggerReadPayload = payloadOf("0a090a01421204089993010a050a01411801");
+export const typingSettingsWithQSensitivityPayload = payloadOf("0a1408ffdf011001180020cd89012800300238014800");
+
 export const analogReportAStartingToMove = capturedReply("61040008");
 export const analogReportEscapePressed = capturedReply("0029c02c");
 export const analogReportFourKeysHeld = capturedReply("430841fe" + "6216c0ca" + "45178009" + "a62cc1ff");

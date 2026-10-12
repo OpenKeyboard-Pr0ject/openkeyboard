@@ -25,7 +25,9 @@ describe("smallestOutputReportHolding", () => {
   });
 
   it("rejects data larger than every declared output report", () => {
-    expect(() => smallestOutputReportHolding(new FakeHidDevice().asHidDevice(), 300)).toThrow(NoFittingOutputReportError);
+    const device = new FakeHidDevice().asHidDevice();
+
+    expect(() => smallestOutputReportHolding(device, 300)).toThrow(NoFittingOutputReportError);
   });
 });
 

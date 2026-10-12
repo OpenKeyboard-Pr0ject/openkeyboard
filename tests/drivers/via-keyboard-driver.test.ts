@@ -125,7 +125,8 @@ describe("Reading a plain VIA keymap", () => {
   });
 
   it("names keycodes with the legacy table on old VIA firmware", async () => {
-    const session = await openSession(new FakeViaKeyboard({ viaProtocolVersion: 9, layers: [[0x5101, 0, 0, 0, 0, 0]] }));
+    const legacyKeyboard = new FakeViaKeyboard({ viaProtocolVersion: 9, layers: [[0x5101, 0, 0, 0, 0, 0]] });
+    const session = await openSession(legacyKeyboard);
     session.definitionLoader!.loadDefinition(TEST_MACROPAD_DEFINITION_JSON);
 
     const keymap = await session.keymap!.readKeymap();

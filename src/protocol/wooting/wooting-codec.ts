@@ -49,7 +49,7 @@ export function encodeWootingReport(
   payload?: Uint8Array,
 ): Uint8Array<ArrayBuffer> {
   const header = [...COMMAND_MAGIC, reportType, storage];
-  if (!payload) return Uint8Array.from(header);
+  if (!payload || payload.length === 0) return Uint8Array.from(header);
   const report = new Uint8Array(header.length + REPORT_LENGTH_BYTES + payload.length);
   report.set([...header, payload.length & 0xff, payload.length >> 8]);
   report.set(payload, header.length + REPORT_LENGTH_BYTES);
