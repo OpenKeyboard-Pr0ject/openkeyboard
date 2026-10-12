@@ -23,6 +23,7 @@ export class ProfileSettingsForm {
 
   constructor(
     private readonly profile: KeyboardProfile,
+    isActiveProfile: boolean,
     private readonly editor: KeyboardProfileEditor,
     private readonly callbacks: ProfileSettingsFormCallbacks,
   ) {
@@ -40,7 +41,7 @@ export class ProfileSettingsForm {
       field("Rapid Trigger", this.rapidTriggerEnabled),
       field("Rapid Trigger sensitivity (mm)", this.sensitivity),
       field("Continuous Rapid Trigger", this.continuous),
-      element("p", "settings-form__note", [`Changes are written to "${profile.name}" and read back to confirm.`]),
+      element("p", "settings-form__note", [targetDescription(profile.name, isActiveProfile)]),
       element("div", "status-card__actions", this.buttons),
       this.status,
     ]);
@@ -56,7 +57,7 @@ export class ProfileSettingsForm {
     this.setBusy(true);
     this.status.textContent = "Writing to the keyboard…";
     try {
-      this.callbacks.onSaved(await this.editor.updateActiveProfile(change));
+      this.callbacks.onSaved(await this.editor.updateProfile(this.profile.slot, change));
     } catch (error) {
       this.status.textContent = `Not saved: ${describeError(error)}`;
       this.setBusy(false);
@@ -82,6 +83,13 @@ export class ProfileSettingsForm {
     [this.actuation, this.rapidTriggerEnabled, this.sensitivity, this.continuous, ...this.buttons]
       .forEach((control) => (control.disabled = busy));
   }
+}
+
+function targetDescription(profileName: string, isActiveProfile: boolean): string {
+  const written = `Changes are written to "${profileName}" and read back to confirm.`;
+  return isActiveProfile
+    ? written
+    : `${written} This profile is not active, so the keyboard keeps using its current profile until you switch.`;
 }
 
 function millimeterInput(value: number, range: SettingRange): HTMLInputElement {

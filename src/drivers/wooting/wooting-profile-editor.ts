@@ -4,13 +4,12 @@ import {
   type KeyboardProfileEditor,
   type ProfileSettingsChange,
 } from "../../keyboard/keyboard-profile";
-import { encodeWootingReport } from "../../protocol/wooting/wooting-codec";
+import { encodeWootingReport, storageForSavingToSlot } from "../../protocol/wooting/wooting-codec";
 import type { WootingCommandChannel } from "../../protocol/wooting/wooting-command-channel";
 import {
   ACTUATION_POINT_RANGE,
   RAPID_TRIGGER_SENSITIVITY_RANGE,
   WootingCommand,
-  WootingReportStorage,
   WootingReportType,
 } from "../../protocol/wooting/wooting-constants";
 import {
@@ -29,6 +28,20 @@ export class ProfileWriteNotVerifiedError extends Error {
   }
 }
 
+export class EmptyProfileSlotError extends Error {
+  constructor(slot: number) {
+    super(`Profile slot ${slot + 1} is empty, so there are no settings to change.`);
+    this.name = "EmptyProfileSlotError";
+  }
+}
+
+export class ActiveSlotChangedError extends Error {
+  constructor(before: number, after: number) {
+    super(`The active profile moved from slot ${before + 1} to slot ${after + 1} during the write.`);
+    this.name = "ActiveSlotChangedError";
+  }
+}
+
 export class WootingProfileEditor implements KeyboardProfileEditor {
   readonly actuationRange = ACTUATION_POINT_RANGE;
   readonly rapidTriggerSensitivityRange = RAPID_TRIGGER_SENSITIVITY_RANGE;
@@ -38,19 +51,27 @@ export class WootingProfileEditor implements KeyboardProfileEditor {
     private readonly reader: WootingProfileReader,
   ) {}
 
-  async updateActiveProfile(change: ProfileSettingsChange): Promise<KeyboardProfile> {
+  async updateProfile(slot: number, change: ProfileSettingsChange): Promise<KeyboardProfile> {
     this.validate(change);
-    const slot = await this.reader.readActiveSlot();
+    const storage = storageForSavingToSlot(slot);
     const rawChange = toRawChange(change);
     const currentSettings = await this.commands.request(WootingCommand.getKeyboardProfile, [slot]);
-    await this.commands.writeReport(encodeWootingReport(WootingReportType.settingsUpdateMarker, WootingReportStorage.saved));
+    if (currentSettings.length === 0) throw new EmptyProfileSlotError(slot);
+    const activeSlotBefore = await this.reader.readActiveSlot();
+    await this.commands.writeReport(encodeWootingReport(WootingReportType.settingsUpdateMarker, storage));
     await this.commands.writeReport(encodeWootingReport(
       WootingReportType.keyboardProfileSettings,
-      WootingReportStorage.saved,
+      storage,
       applyProfileSettingsChange(currentSettings, rawChange),
     ));
     await this.verifyStored(slot, rawChange);
+    await this.verifyActiveSlotUnchanged(activeSlotBefore);
     return this.reader.readProfile(slot);
+  }
+
+  private async verifyActiveSlotUnchanged(activeSlotBefore: number): Promise<void> {
+    const activeSlotAfter = await this.reader.readActiveSlot();
+    if (activeSlotAfter !== activeSlotBefore) throw new ActiveSlotChangedError(activeSlotBefore, activeSlotAfter);
   }
 
   private validate(change: ProfileSettingsChange): void {

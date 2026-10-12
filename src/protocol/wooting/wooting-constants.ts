@@ -26,12 +26,7 @@ export const WootingReportType = {
 
 export type WootingReportTypeId = (typeof WootingReportType)[keyof typeof WootingReportType];
 
-export const WootingReportStorage = {
-  preview: 0x00,
-  saved: 0x01,
-} as const;
-
-export type WootingReportStorageId = (typeof WootingReportStorage)[keyof typeof WootingReportStorage];
+export const WOOTING_PROFILE_SLOT_COUNT = 4;
 
 export const RAPID_TRIGGER_SENSITIVITY_RANGE = { min: 0.1, max: 2.35, step: 0.05 } as const;
 export const ACTUATION_POINT_RANGE = { min: 0.1, max: 4.0, step: 0.05 } as const;

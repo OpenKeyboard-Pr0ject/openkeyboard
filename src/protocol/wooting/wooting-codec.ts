@@ -1,5 +1,5 @@
 import { formatHex } from "../../shared/hex";
-import type { WootingCommandId, WootingReportStorageId, WootingReportTypeId } from "./wooting-constants";
+import { WOOTING_PROFILE_SLOT_COUNT, type WootingCommandId, type WootingReportTypeId } from "./wooting-constants";
 
 const COMMAND_MAGIC = [0xd1, 0xda] as const;
 const COMMAND_PARAMETER_BYTES = 4;
@@ -13,6 +13,8 @@ const REPLY_SUCCESS_STATUS = 0x88;
 
 const FIRMWARE_VERSION_BYTES = 3;
 const REPORT_LENGTH_BYTES = 2;
+const STORAGE_SAVE_BIT = 0x01;
+const STORAGE_SLOT_SHIFT = 1;
 
 export class WootingProtocolError extends Error {
   constructor(message: string) {
@@ -34,9 +36,16 @@ export function encodeWootingCommand(
   return report;
 }
 
+export function storageForSavingToSlot(slot: number): number {
+  if (!Number.isInteger(slot) || slot < 0 || slot >= WOOTING_PROFILE_SLOT_COUNT) {
+    throw new WootingProtocolError(`Profile slot ${slot} does not exist.`);
+  }
+  return (slot << STORAGE_SLOT_SHIFT) | STORAGE_SAVE_BIT;
+}
+
 export function encodeWootingReport(
   reportType: WootingReportTypeId,
-  storage: WootingReportStorageId,
+  storage: number,
   payload?: Uint8Array,
 ): Uint8Array<ArrayBuffer> {
   const header = [...COMMAND_MAGIC, reportType, storage];

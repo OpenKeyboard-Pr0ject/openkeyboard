@@ -39,7 +39,7 @@ export interface ProfileSettingsChange {
 export interface KeyboardProfileEditor {
   readonly actuationRange: SettingRange;
   readonly rapidTriggerSensitivityRange: SettingRange;
-  updateActiveProfile(change: ProfileSettingsChange): Promise<KeyboardProfile>;
+  updateProfile(slot: number, change: ProfileSettingsChange): Promise<KeyboardProfile>;
 }
 
 export class SettingOutOfRangeError extends Error {

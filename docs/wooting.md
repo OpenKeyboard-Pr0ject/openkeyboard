@@ -1,6 +1,6 @@
 ## Wooting protocol notes
 
-Observed on a Wooting 80HE TenZ, firmware 2.14.0, Windows 11.
+Observed on a Wooting 80HE TenZ, firmware 2.14.0 and 2.14.1, Windows 11.
 
 | Interface | Usage page | Role |
 |---|---|---|
@@ -49,7 +49,7 @@ Two encodings appear side by side, even within one keyboard:
 
 | Encoding | Range | Millimeters | Seen in |
 |---|---|---|---|
-| Precise | `0x4000` and above | (raw − `0x4000`) / `0x1000` | Slots 0 and 1 |
+| Precise | `0x4000` and above | (raw − `0x4000`) / `0x3FFF` × 4.0 | Slots 0 and 1 |
 | Legacy 8-bit | `0x00`–`0xFF` | raw / 255 × 4.0 | Slot 2 (TenZ Ultra profile) |
 
 | Raw | Millimeters | Wootility |
@@ -59,6 +59,8 @@ Two encodings appear side by side, even within one keyboard:
 | `0x4686` | 0.408 | 0.40 mm |
 | `0x4FD0` | 0.988 | 1.00 mm |
 | `0x6FEF` | 2.996 | 3.00 mm |
+| `0x6F32` | 2.950 | 2.95 mm |
+| `0x6FFF` | 3.000 | 3.00 mm |
 | `0x1A` (legacy) | 0.408 | |
 | `0x3F` (legacy) | 0.988 | |
 | `0xBF` (legacy) | 2.996 | |
@@ -84,28 +86,33 @@ This layout was confirmed against a 3-minute capture of 6,397 reports covering 2
 
 ### Editing settings
 
-OpenKeyboard changes the global actuation point, Rapid Trigger on/off, Rapid Trigger sensitivity, and Continuous Rapid Trigger of the **active** profile:
+OpenKeyboard changes the global actuation point, Rapid Trigger on/off, Rapid Trigger sensitivity, and Continuous Rapid Trigger of **any stored profile**, active or not, without switching profiles:
 
 1. Check the values against Wootility's limits: actuation 0.1–4.0 mm, sensitivity 0.1–2.35 mm, both in 0.05 mm steps.
-2. Read the profile's current `0x27` payload and change only the requested protobuf fields. Unknown fields keep their exact bytes.
-3. Send `D1 DA 1D 01`, then `D1 DA 11 01 <length> <payload>`. This is the pair Wootility sends when it saves.
-4. Read `0x27` again and fail with an error if any changed field did not stick.
+2. Read the slot's current `0x27` payload and refuse an empty slot. Change only the requested protobuf fields; unknown fields keep their exact bytes.
+3. Send `D1 DA 1D <storage>`, then `D1 DA 11 <storage> <length> <payload>`, where `storage = slot << 1 | 1`. This is the pair Wootility sends when it saves that slot.
+4. Read `0x27` for that slot again and fail if any changed field did not stick. Also fail if the active slot moved.
 
-Millimeters are written in the precise encoding: `0x4000 + round(mm × 4096)`. This gives the same bytes as Wootility (0.4 mm → `0x4666`, 0.5 mm → `0x4800`).
+Verified on the 80HE:
 
-Verified on the 80HE: the `0x11` report with storage flag `01` is written to flash on its own. The value survived unplugging the keyboard, and no feature command was needed. Sensitivity was changed 0.4 → 0.5 → 0.4 mm with a test script, then 0.40 → 0.45 → 0.40 mm through the app in Chrome. After each round trip, all three slots read back byte-identical to the start.
+- **Saving is immediate:** a `0x11` report saved to a slot is written to flash on its own. The value survived unplugging the keyboard, and no feature command was needed.
+- **Active profile:** sensitivity 0.4 → 0.5 → 0.4 mm with a test script, then 0.40 → 0.45 → 0.40 mm through the app in Chrome.
+- **Inactive profile:** Wootility set the Typing Profile (slot 1) to 2.95 mm. Then the app, with TenZ Profile still active, set it back to 3.00 mm. The keyboard stayed on TenZ Profile.
+- **Restored state:** after every round trip, all slots, the device config and the global settings read back byte-identical to the start.
 
-Not supported yet: editing profiles that are not active, per-key actuation, per-key Rapid Trigger, and every other report type below.
+Not supported yet: per-key actuation, per-key Rapid Trigger, and the other report types below.
 
 ### Write protocol
 
 Captured from Wootility Web 5.4.1 while Rapid Trigger sensitivity was changed from 0.4 mm to 0.5 mm and back, with a logging-only hook on `HIDDevice.prototype`. Writes are **output** reports. The report ID is chosen by size (1 up to 32 bytes, 2 up to 62, 3 up to 254, 4 up to 510):
 
 ```
-D1 DA <report type> <flag> <length u16 LE> <protobuf payload>
+D1 DA <report type> <storage> <length u16 LE> <protobuf payload>
 ```
 
-- **Apply without saving:** when a value changes, Wootility sends `D1 DA 1D` followed by the settings report with flag `00`. The keyboard keeps answering `0x27` with the saved value until Save.
+- **Storage byte:** `00` applies a preview to the active profile without saving. For profile reports, `slot << 1 | 1` saves into that slot: `01` for slot 0, `03` for slot 1. Reports that are not tied to a profile (`0x17`, `0x21`, `0x28`) always use `01`. The feature commands of the save sequence take the slot as their parameter (`0801`, `3501`, `4801`).
+- **Apply without saving:** when a value changes, Wootility sends `D1 DA 1D` followed by the settings report with storage `00`. The keyboard keeps answering `0x27` with the saved value until Save.
+- **Switching profiles:** when a profile is selected in Wootility, it sends feature command `D1 DA 17 <slot>` (ActivateProfile), then previews that profile's reports. OpenKeyboard does not need this, because a save can target any slot directly.
 - **Save:** Save to Keyboard sends the same 27 reports and commands every time, whatever changed. Saving 0.5 mm and then 0.4 mm differed in exactly one report: the `0x11` settings report, field 4.
 
 | Report type | Content | Read counterpart |

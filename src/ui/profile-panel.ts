@@ -63,7 +63,7 @@ export class ProfilePanel implements Panel {
   }
 
   private showProfile(profile: KeyboardProfile, notice?: string): void {
-    const editButton = this.editor && profile.slot === this.overview.activeSlot
+    const editButton = this.editor
       ? [element("div", "status-card__actions", [actionButton("Edit settings", "primary", () => this.edit(profile))])]
       : [];
     this.showDetails([...(notice ? [message(notice)] : []), ...profileDetails(profile), ...editButton]);
@@ -71,7 +71,8 @@ export class ProfilePanel implements Panel {
 
   private edit(profile: KeyboardProfile): void {
     if (!this.editor) return;
-    const form = new ProfileSettingsForm(profile, this.editor, {
+    const isActive = profile.slot === this.overview.activeSlot;
+    const form = new ProfileSettingsForm(profile, isActive, this.editor, {
       onSaved: (savedProfile) => this.showProfile(savedProfile, "Saved to the keyboard and confirmed by reading it back."),
       onCancel: () => this.showProfile(profile),
     });

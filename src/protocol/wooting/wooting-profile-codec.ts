@@ -5,10 +5,10 @@ import { hidUsageForWootingKeyCode, NO_HID_USAGE, UNASSIGNED_KEY_CODE } from "./
 import { matrixColumnOf, matrixRowOf } from "./wooting-matrix";
 
 const PRECISE_TRAVEL_FLAG = 0x4000;
-const PRECISE_TRAVEL_UNITS_PER_MILLIMETER = 0x1000;
+const PRECISE_TRAVEL_MAX_RAW = 0x3fff;
 const PRECISE_ENTRY_POSITION_RANGE = 0x10000;
 const LEGACY_TRAVEL_MAX_RAW = 0xff;
-const LEGACY_TRAVEL_MAX_MILLIMETERS = 4.0;
+const FULL_TRAVEL_MILLIMETERS = 4.0;
 const LEGACY_ENTRY_POSITION_RANGE = 0x100;
 const TRAVEL_STEPS_PER_MILLIMETER = 20;
 const ENABLED = 1;
@@ -117,13 +117,13 @@ function settingsFieldUpdates(change: WootingProfileSettingsChange): Array<reado
 }
 
 export function millimetersToPreciseTravel(millimeters: number): number {
-  return PRECISE_TRAVEL_FLAG + Math.round(millimeters * PRECISE_TRAVEL_UNITS_PER_MILLIMETER);
+  return PRECISE_TRAVEL_FLAG + Math.round((millimeters / FULL_TRAVEL_MILLIMETERS) * PRECISE_TRAVEL_MAX_RAW);
 }
 
 export function wootingTravelToMillimeters(raw: number): number {
   const millimeters = raw >= PRECISE_TRAVEL_FLAG
-    ? (raw - PRECISE_TRAVEL_FLAG) / PRECISE_TRAVEL_UNITS_PER_MILLIMETER
-    : (raw / LEGACY_TRAVEL_MAX_RAW) * LEGACY_TRAVEL_MAX_MILLIMETERS;
+    ? ((raw - PRECISE_TRAVEL_FLAG) / PRECISE_TRAVEL_MAX_RAW) * FULL_TRAVEL_MILLIMETERS
+    : (raw / LEGACY_TRAVEL_MAX_RAW) * FULL_TRAVEL_MILLIMETERS;
   return Math.round(millimeters * TRAVEL_STEPS_PER_MILLIMETER) / TRAVEL_STEPS_PER_MILLIMETER;
 }
 
