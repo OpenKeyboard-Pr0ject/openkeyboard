@@ -9,6 +9,11 @@ export const WOOTING_HARDWARE_VERIFIED_PRODUCT_IDS: ReadonlySet<number> = new Se
 
 export const WootingCommand = {
   getFirmwareVersion: 0x01,
+  getCurrentProfileIndex: 0x0b,
+  getKeyboardProfile: 0x27,
+  getKeyMapping: 0x30,
+  getActuationProfile: 0x31,
+  getProfileMetadata: 0x37,
 } as const;
 
 export type WootingCommandId = (typeof WootingCommand)[keyof typeof WootingCommand];

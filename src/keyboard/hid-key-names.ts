@@ -1,4 +1,4 @@
-import type { AnalogKeyReading } from "./analog-keys";
+import type { MatrixKey } from "./matrix-key";
 
 const FIRST_LETTER_USAGE = 0x04;
 const FIRST_DIGIT_USAGE = 0x1e;
@@ -21,6 +21,6 @@ const KEY_NAMES: ReadonlyMap<number, string> = new Map(
   NAMED_USAGE_RANGES.flatMap(([firstUsage, names]) => names.map((name, index) => [firstUsage + index, name] as const)),
 );
 
-export function keyLabel(reading: AnalogKeyReading): string {
-  return KEY_NAMES.get(reading.hidUsage) ?? `Row ${reading.matrixRow}, Col ${reading.matrixColumn}`;
+export function keyLabel(key: MatrixKey): string {
+  return KEY_NAMES.get(key.hidUsage) ?? `Row ${key.matrixRow}, Col ${key.matrixColumn}`;
 }

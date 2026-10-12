@@ -38,6 +38,16 @@ describe("WootingCommandChannel", () => {
     await expect(request).resolves.toEqual(new Uint8Array([0x02, 0x0e, 0x00]));
   });
 
+  it("accepts a reply that arrives on a larger input report", async () => {
+    const device = new FakeHidDevice();
+    const request = new WootingCommandChannel(device.asHidDevice()).request(WootingCommand.getFirmwareVersion);
+    await Promise.resolve();
+
+    device.emitInputReport(2, firmwareVersionReply);
+
+    await expect(request).resolves.toEqual(new Uint8Array([0x02, 0x0e, 0x00]));
+  });
+
   it("rejects with a timeout when the keyboard never answers", async () => {
     vi.useFakeTimers();
     const device = new FakeHidDevice();

@@ -1,7 +1,6 @@
-export interface AnalogKeyReading {
-  readonly hidUsage: number;
-  readonly matrixRow: number;
-  readonly matrixColumn: number;
+import type { MatrixKey } from "./matrix-key";
+
+export interface AnalogKeyReading extends MatrixKey {
   readonly depth: number;
 }
 

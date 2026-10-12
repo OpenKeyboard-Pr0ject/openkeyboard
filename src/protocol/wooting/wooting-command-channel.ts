@@ -29,7 +29,7 @@ export class WootingCommandChannel {
   private async exchange(command: WootingCommandId): Promise<Uint8Array> {
     const pendingReply = waitForInputReport(
       this.device,
-      (reportId, report) => reportId === WOOTING_COMMAND_REPORT_ID && isWootingReplyTo(report, command),
+      (_reportId, report) => isWootingReplyTo(report, command),
       REPLY_TIMEOUT_MS,
     );
     try {
