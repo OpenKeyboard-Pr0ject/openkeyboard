@@ -1,7 +1,8 @@
 import type { ConnectionState, KeyboardConnection } from "../connection/keyboard-connection";
-import type { KeyboardIdentity } from "../drivers/keyboard-driver";
+import type { KeyboardCapabilities, KeyboardIdentity } from "../drivers/keyboard-driver";
 import { formatHex } from "../shared/hex";
 import { actionButton, detailRow, element } from "./dom";
+import { KeymapPanel } from "./keymap-panel";
 import { LiveKeyPanel } from "./live-key-panel";
 import type { Panel } from "./panel";
 import { ProfilePanel } from "./profile-panel";
@@ -72,11 +73,16 @@ function connectedContent(connection: KeyboardConnection, state: ConnectedState)
       actionButton("Disconnect", "secondary", () => void connection.disconnect()),
       actionButton("Forget device", "secondary", () => void connection.forget()),
     ],
-    panels: [
-      ...(state.profiles ? [new ProfilePanel(state.profiles)] : []),
-      ...(state.analogKeys ? [new LiveKeyPanel(state.analogKeys, requestAccess)] : []),
-    ],
+    panels: panelsFor(state.capabilities, requestAccess),
   };
+}
+
+function panelsFor(capabilities: KeyboardCapabilities, requestAccess: () => void): Panel[] {
+  return [
+    ...(capabilities.profiles ? [new ProfilePanel(capabilities.profiles, capabilities.profileEditor)] : []),
+    ...(capabilities.keymap ? [new KeymapPanel(capabilities.keymap, capabilities.definitionLoader)] : []),
+    ...(capabilities.analogKeys ? [new LiveKeyPanel(capabilities.analogKeys, requestAccess)] : []),
+  ];
 }
 
 function failedContent(connection: KeyboardConnection, deviceName: string, reason: string): StatusCardContent {

@@ -1,6 +1,6 @@
 import { hasCollection } from "../../hid/collections";
 import type { AnalogKeySource } from "../../keyboard/analog-keys";
-import type { KeyboardProfileReader } from "../../keyboard/keyboard-profile";
+import type { KeyboardProfileEditor, KeyboardProfileReader } from "../../keyboard/keyboard-profile";
 import { decodeFirmwareVersion } from "../../protocol/wooting/wooting-codec";
 import { WootingCommandChannel } from "../../protocol/wooting/wooting-command-channel";
 import {
@@ -10,21 +10,28 @@ import {
   WOOTING_CONFIG_USAGE_PAGE,
   WOOTING_HARDWARE_VERIFIED_PRODUCT_IDS,
   WOOTING_VENDOR_ID,
+  WOOTING_WRITE_VERIFIED_PRODUCT_IDS,
   WootingCommand,
 } from "../../protocol/wooting/wooting-constants";
 import type { AuthorizedDeviceLister, KeyboardDriver, KeyboardIdentity, KeyboardSession } from "../keyboard-driver";
 import { WootingAnalogKeySource } from "./wooting-analog-key-source";
+import { WootingProfileEditor } from "./wooting-profile-editor";
 import { WootingProfileReader } from "./wooting-profile-reader";
 
 class WootingKeyboardSession implements KeyboardSession {
   readonly analogKeys: AnalogKeySource;
   readonly profiles: KeyboardProfileReader;
+  readonly profileEditor?: KeyboardProfileEditor;
   private readonly commands: WootingCommandChannel;
 
   constructor(readonly device: HIDDevice, listAuthorizedDevices: AuthorizedDeviceLister) {
     this.commands = new WootingCommandChannel(device);
     this.analogKeys = new WootingAnalogKeySource(device, listAuthorizedDevices);
-    this.profiles = new WootingProfileReader(this.commands);
+    const reader = new WootingProfileReader(this.commands);
+    this.profiles = reader;
+    if (WOOTING_WRITE_VERIFIED_PRODUCT_IDS.has(device.productId)) {
+      this.profileEditor = new WootingProfileEditor(this.commands, reader);
+    }
   }
 
   async readIdentity(): Promise<KeyboardIdentity> {

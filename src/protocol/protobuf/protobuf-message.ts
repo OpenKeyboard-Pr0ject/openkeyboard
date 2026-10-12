@@ -2,13 +2,20 @@ const WIRE_VARINT = 0;
 const WIRE_FIXED64 = 1;
 const WIRE_LENGTH_DELIMITED = 2;
 const WIRE_FIXED32 = 5;
-const WIRE_TYPE_BITS = 8;
+const WIRE_TYPE_RANGE = 8;
 const VARINT_PAYLOAD_BITS = 7;
+const VARINT_PAYLOAD_RANGE = 0x80;
 const VARINT_PAYLOAD_MASK = 0x7f;
 const VARINT_CONTINUATION_BIT = 0x80;
 const MAX_VARINT_BYTES = 10;
 
 type ProtobufFieldValue = number | Uint8Array;
+
+interface ProtobufField {
+  readonly fieldNumber: number;
+  readonly wireType: number;
+  readonly value: ProtobufFieldValue;
+}
 
 export class ProtobufDecodeError extends Error {
   constructor(message: string) {
@@ -54,16 +61,17 @@ class ProtobufCursor {
 }
 
 export class ProtobufMessage {
-  private constructor(private readonly fields: ReadonlyMap<number, readonly ProtobufFieldValue[]>) {}
+  private constructor(private readonly fields: readonly ProtobufField[]) {}
 
   static decode(bytes: Uint8Array): ProtobufMessage {
     const cursor = new ProtobufCursor(bytes);
-    const fields = new Map<number, ProtobufFieldValue[]>();
+    const fields: ProtobufField[] = [];
     while (!cursor.done) {
       const tag = cursor.readVarint();
-      const fieldNumber = Math.floor(tag / WIRE_TYPE_BITS);
+      const fieldNumber = Math.floor(tag / WIRE_TYPE_RANGE);
+      const wireType = tag % WIRE_TYPE_RANGE;
       if (fieldNumber === 0) throw new ProtobufDecodeError("Field number 0 is not valid.");
-      fields.set(fieldNumber, [...(fields.get(fieldNumber) ?? []), readFieldValue(cursor, tag % WIRE_TYPE_BITS)]);
+      fields.push({ fieldNumber, wireType, value: readFieldValue(cursor, wireType) });
     }
     return new ProtobufMessage(fields);
   }
@@ -87,21 +95,68 @@ export class ProtobufMessage {
   }
 
   repeatedMessages(fieldNumber: number): ProtobufMessage[] {
-    return (this.fields.get(fieldNumber) ?? [])
+    return this.valuesOf(fieldNumber)
       .filter((value): value is Uint8Array => value instanceof Uint8Array)
       .map((value) => ProtobufMessage.decode(value));
   }
 
-  packedVarints(fieldNumber: number): number[] {
-    const cursor = new ProtobufCursor(this.bytes(fieldNumber));
-    const values: number[] = [];
-    while (!cursor.done) values.push(cursor.readVarint());
-    return values;
+  repeatedVarints(fieldNumber: number): number[] {
+    return this.valuesOf(fieldNumber).flatMap((value) => (typeof value === "number" ? [value] : unpackVarints(value)));
+  }
+
+  withVarint(fieldNumber: number, value: number): ProtobufMessage {
+    return this.withField({ fieldNumber, wireType: WIRE_VARINT, value });
+  }
+
+  withMessage(fieldNumber: number, message: ProtobufMessage): ProtobufMessage {
+    return this.withField({ fieldNumber, wireType: WIRE_LENGTH_DELIMITED, value: message.encode() });
+  }
+
+  encode(): Uint8Array<ArrayBuffer> {
+    return Uint8Array.from(this.fields.flatMap(encodeField));
+  }
+
+  private withField(replacement: ProtobufField): ProtobufMessage {
+    const index = this.fields.findIndex((field) => field.fieldNumber === replacement.fieldNumber);
+    if (index >= 0) return new ProtobufMessage(this.fields.map((field, position) => (position === index ? replacement : field)));
+    const insertAt = this.fields.findIndex((field) => field.fieldNumber > replacement.fieldNumber);
+    const fields = [...this.fields];
+    fields.splice(insertAt < 0 ? fields.length : insertAt, 0, replacement);
+    return new ProtobufMessage(fields);
+  }
+
+  private valuesOf(fieldNumber: number): ProtobufFieldValue[] {
+    return this.fields.filter((field) => field.fieldNumber === fieldNumber).map((field) => field.value);
   }
 
   private lastValue(fieldNumber: number): ProtobufFieldValue | undefined {
-    return this.fields.get(fieldNumber)?.at(-1);
+    return this.valuesOf(fieldNumber).at(-1);
   }
+}
+
+function encodeField(field: ProtobufField): number[] {
+  const tag = encodeVarint(field.fieldNumber * WIRE_TYPE_RANGE + field.wireType);
+  if (typeof field.value === "number") return [...tag, ...encodeVarint(field.value)];
+  const lengthPrefix = field.wireType === WIRE_LENGTH_DELIMITED ? encodeVarint(field.value.length) : [];
+  return [...tag, ...lengthPrefix, ...field.value];
+}
+
+function encodeVarint(value: number): number[] {
+  const bytes: number[] = [];
+  let remaining = value;
+  while (remaining >= VARINT_PAYLOAD_RANGE) {
+    bytes.push((remaining % VARINT_PAYLOAD_RANGE) | VARINT_CONTINUATION_BIT);
+    remaining = Math.floor(remaining / VARINT_PAYLOAD_RANGE);
+  }
+  bytes.push(remaining);
+  return bytes;
+}
+
+function unpackVarints(packed: Uint8Array): number[] {
+  const cursor = new ProtobufCursor(packed);
+  const values: number[] = [];
+  while (!cursor.done) values.push(cursor.readVarint());
+  return values;
 }
 
 function readFieldValue(cursor: ProtobufCursor, wireType: number): ProtobufFieldValue {

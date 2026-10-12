@@ -1,4 +1,4 @@
-import { featureReportByteLength } from "../../hid/collections";
+import { featureReportByteLength, smallestOutputReportHolding } from "../../hid/collections";
 import { waitForInputReport } from "../../hid/input-report-waiter";
 import { describeError } from "../../shared/describe-error";
 import { formatHex } from "../../shared/hex";
@@ -20,13 +20,32 @@ export class WootingCommandChannel {
     this.commandReportLength = featureReportByteLength(device, WOOTING_COMMAND_REPORT_ID);
   }
 
-  request(command: WootingCommandId): Promise<Uint8Array> {
-    const exchange = this.previousExchange.then(() => this.exchange(command));
-    this.previousExchange = exchange.catch(() => undefined);
-    return exchange;
+  request(command: WootingCommandId, parameters: readonly number[] = []): Promise<Uint8Array> {
+    return this.enqueue(() => this.exchange(command, parameters));
   }
 
-  private async exchange(command: WootingCommandId): Promise<Uint8Array> {
+  writeReport(report: Uint8Array): Promise<void> {
+    return this.enqueue(() => this.sendOutputReport(report));
+  }
+
+  private enqueue<Result>(operation: () => Promise<Result>): Promise<Result> {
+    const result = this.previousExchange.then(operation);
+    this.previousExchange = result.catch(() => undefined);
+    return result;
+  }
+
+  private async sendOutputReport(report: Uint8Array): Promise<void> {
+    const outputReport = smallestOutputReportHolding(this.device, report.length);
+    const padded = new Uint8Array(outputReport.byteLength);
+    padded.set(report);
+    try {
+      await this.device.sendReport(outputReport.reportId, padded);
+    } catch (error) {
+      throw new WootingProtocolError(`Could not write report ${formatHex(report[2], 2)}: ${describeError(error)}`);
+    }
+  }
+
+  private async exchange(command: WootingCommandId, parameters: readonly number[]): Promise<Uint8Array> {
     const pendingReply = waitForInputReport(
       this.device,
       (_reportId, report) => isWootingReplyTo(report, command),
@@ -35,7 +54,7 @@ export class WootingCommandChannel {
     try {
       await this.device.sendFeatureReport(
         WOOTING_COMMAND_REPORT_ID,
-        encodeWootingCommand(command, this.commandReportLength),
+        encodeWootingCommand(command, parameters, this.commandReportLength),
       );
     } catch (error) {
       const reason = `Could not send command ${formatHex(command, 2)}: ${describeError(error)}`;

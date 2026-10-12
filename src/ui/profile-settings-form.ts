@@ -1,0 +1,106 @@
+import type {
+  KeyboardProfile,
+  KeyboardProfileEditor,
+  ProfileSettingsChange,
+  SettingRange,
+} from "../keyboard/keyboard-profile";
+import { describeError } from "../shared/describe-error";
+import { actionButton, element } from "./dom";
+
+export interface ProfileSettingsFormCallbacks {
+  readonly onSaved: (profile: KeyboardProfile) => void;
+  readonly onCancel: () => void;
+}
+
+export class ProfileSettingsForm {
+  readonly element: HTMLElement;
+  private readonly actuation: HTMLInputElement;
+  private readonly rapidTriggerEnabled: HTMLInputElement;
+  private readonly sensitivity: HTMLInputElement;
+  private readonly continuous: HTMLInputElement;
+  private readonly status: HTMLElement;
+  private readonly buttons: HTMLButtonElement[];
+
+  constructor(
+    private readonly profile: KeyboardProfile,
+    private readonly editor: KeyboardProfileEditor,
+    private readonly callbacks: ProfileSettingsFormCallbacks,
+  ) {
+    this.actuation = millimeterInput(profile.actuationMillimeters, editor.actuationRange);
+    this.rapidTriggerEnabled = checkbox(profile.rapidTrigger.enabled);
+    this.sensitivity = millimeterInput(profile.rapidTrigger.sensitivityMillimeters, editor.rapidTriggerSensitivityRange);
+    this.continuous = checkbox(profile.rapidTrigger.continuous);
+    this.status = element("p", "panel__message");
+    this.buttons = [
+      actionButton("Save to keyboard", "primary", () => void this.save()),
+      actionButton("Cancel", "secondary", () => this.callbacks.onCancel()),
+    ];
+    this.element = element("form", "settings-form", [
+      field("Actuation point (mm)", this.actuation),
+      field("Rapid Trigger", this.rapidTriggerEnabled),
+      field("Rapid Trigger sensitivity (mm)", this.sensitivity),
+      field("Continuous Rapid Trigger", this.continuous),
+      element("p", "settings-form__note", [`Changes are written to "${profile.name}" and read back to confirm.`]),
+      element("div", "status-card__actions", this.buttons),
+      this.status,
+    ]);
+    this.element.addEventListener("submit", (event) => event.preventDefault());
+  }
+
+  private async save(): Promise<void> {
+    const change = this.collectChange();
+    if (Object.keys(change).length === 0) {
+      this.status.textContent = "Nothing changed.";
+      return;
+    }
+    this.setBusy(true);
+    this.status.textContent = "Writing to the keyboard…";
+    try {
+      this.callbacks.onSaved(await this.editor.updateActiveProfile(change));
+    } catch (error) {
+      this.status.textContent = `Not saved: ${describeError(error)}`;
+      this.setBusy(false);
+    }
+  }
+
+  private collectChange(): ProfileSettingsChange {
+    const actuation = this.actuation.valueAsNumber;
+    const sensitivity = this.sensitivity.valueAsNumber;
+    const current = this.profile;
+    return {
+      ...(actuation !== current.actuationMillimeters ? { actuationMillimeters: actuation } : {}),
+      ...(this.rapidTriggerEnabled.checked !== current.rapidTrigger.enabled
+        ? { rapidTriggerEnabled: this.rapidTriggerEnabled.checked } : {}),
+      ...(sensitivity !== current.rapidTrigger.sensitivityMillimeters
+        ? { rapidTriggerSensitivityMillimeters: sensitivity } : {}),
+      ...(this.continuous.checked !== current.rapidTrigger.continuous
+        ? { continuousRapidTrigger: this.continuous.checked } : {}),
+    };
+  }
+
+  private setBusy(busy: boolean): void {
+    [this.actuation, this.rapidTriggerEnabled, this.sensitivity, this.continuous, ...this.buttons]
+      .forEach((control) => (control.disabled = busy));
+  }
+}
+
+function millimeterInput(value: number, range: SettingRange): HTMLInputElement {
+  const input = element("input", "settings-form__number");
+  input.type = "number";
+  input.min = String(range.min);
+  input.max = String(range.max);
+  input.step = String(range.step);
+  input.value = value.toFixed(2);
+  return input;
+}
+
+function checkbox(checked: boolean): HTMLInputElement {
+  const input = element("input", "settings-form__checkbox");
+  input.type = "checkbox";
+  input.checked = checked;
+  return input;
+}
+
+function field(labelText: string, control: HTMLInputElement): HTMLLabelElement {
+  return element("label", "settings-form__field", [element("span", "details__label", [labelText]), control]);
+}

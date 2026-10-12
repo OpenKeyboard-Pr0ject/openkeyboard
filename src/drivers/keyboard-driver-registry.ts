@@ -1,8 +1,9 @@
 import { formatHex } from "../shared/hex";
 import type { KeyboardDriver } from "./keyboard-driver";
+import { viaKeyboardDriver } from "./via/via-keyboard-driver";
 import { wootingKeyboardDriver } from "./wooting/wooting-keyboard-driver";
 
-const keyboardDrivers: readonly KeyboardDriver[] = [wootingKeyboardDriver];
+const keyboardDrivers: readonly KeyboardDriver[] = [wootingKeyboardDriver, viaKeyboardDriver];
 
 export class UnsupportedKeyboardError extends Error {
   constructor(device: HIDDevice) {

@@ -2,8 +2,10 @@ import type {
   KeyActuation,
   KeyboardProfile,
   KeyboardProfileReader,
+  KeyboardProfileSummary,
   RapidTriggerSettings,
 } from "../../keyboard/keyboard-profile";
+import type { MatrixKey } from "../../keyboard/matrix-key";
 import type { WootingCommandChannel } from "../../protocol/wooting/wooting-command-channel";
 import { WootingCommand } from "../../protocol/wooting/wooting-constants";
 import {
@@ -14,8 +16,62 @@ import {
   decodeProfileSettings,
   matrixKeyAt,
   wootingTravelToMillimeters,
+  type WootingProfileMetadata,
   type WootingProfileSettings,
 } from "../../protocol/wooting/wooting-profile-codec";
+
+const MAX_PROFILE_SLOTS = 4;
+const BASE_LAYOUT_SLOT = 0;
+
+export class WootingProfileReader implements KeyboardProfileReader {
+  constructor(private readonly commands: WootingCommandChannel) {}
+
+  async readActiveSlot(): Promise<number> {
+    return decodeCurrentProfileIndex(await this.commands.request(WootingCommand.getCurrentProfileIndex));
+  }
+
+  async listProfiles(): Promise<KeyboardProfileSummary[]> {
+    const summaries: KeyboardProfileSummary[] = [];
+    for (let slot = 0; slot < MAX_PROFILE_SLOTS; slot += 1) {
+      const metadata = await this.readMetadata(slot);
+      if (metadata.name === "") break;
+      summaries.push({ slot, name: metadata.name, color: metadata.color });
+    }
+    return summaries;
+  }
+
+  async readProfile(slot: number): Promise<KeyboardProfile> {
+    const metadata = await this.readMetadata(slot);
+    const settings = decodeProfileSettings(await this.commands.request(WootingCommand.getKeyboardProfile, [slot]));
+    return {
+      slot,
+      name: metadata.name,
+      color: metadata.color,
+      actuationMillimeters: wootingTravelToMillimeters(settings.actuationRaw),
+      rapidTrigger: rapidTriggerFrom(settings),
+      keyActuations: await this.readKeyActuations(slot),
+    };
+  }
+
+  private async readMetadata(slot: number): Promise<WootingProfileMetadata> {
+    return decodeProfileMetadata(await this.commands.request(WootingCommand.getProfileMetadata, [slot]));
+  }
+
+  private async readLayout(slot: number): Promise<MatrixKey[]> {
+    const layout = decodeKeyMapping(await this.commands.request(WootingCommand.getKeyMapping, [slot]));
+    if (layout.length > 0 || slot === BASE_LAYOUT_SLOT) return layout;
+    return this.readLayout(BASE_LAYOUT_SLOT);
+  }
+
+  private async readKeyActuations(slot: number): Promise<KeyActuation[]> {
+    const layout = await this.readLayout(slot);
+    const overrides = decodeActuationOverrides(await this.commands.request(WootingCommand.getActuationProfile, [slot]));
+    return overrides.map((override) => ({
+      key: matrixKeyAt(layout, override.matrixPosition),
+      actuationMillimeters: wootingTravelToMillimeters(override.actuationRaw),
+    }));
+  }
+}
 
 function rapidTriggerFrom(settings: WootingProfileSettings): RapidTriggerSettings {
   return {
@@ -23,31 +79,4 @@ function rapidTriggerFrom(settings: WootingProfileSettings): RapidTriggerSetting
     sensitivityMillimeters: wootingTravelToMillimeters(settings.rapidTriggerSensitivityRaw),
     continuous: settings.continuousRapidTriggerEnabled,
   };
-}
-
-export class WootingProfileReader implements KeyboardProfileReader {
-  constructor(private readonly commands: WootingCommandChannel) {}
-
-  async readActiveProfile(): Promise<KeyboardProfile> {
-    const slot = decodeCurrentProfileIndex(await this.commands.request(WootingCommand.getCurrentProfileIndex));
-    const metadata = decodeProfileMetadata(await this.commands.request(WootingCommand.getProfileMetadata));
-    const settings = decodeProfileSettings(await this.commands.request(WootingCommand.getKeyboardProfile));
-    return {
-      slot,
-      name: metadata.name,
-      color: metadata.color,
-      actuationMillimeters: wootingTravelToMillimeters(settings.actuationRaw),
-      rapidTrigger: rapidTriggerFrom(settings),
-      keyActuations: await this.readKeyActuations(),
-    };
-  }
-
-  private async readKeyActuations(): Promise<KeyActuation[]> {
-    const layout = decodeKeyMapping(await this.commands.request(WootingCommand.getKeyMapping));
-    const overrides = decodeActuationOverrides(await this.commands.request(WootingCommand.getActuationProfile));
-    return overrides.map((override) => ({
-      key: matrixKeyAt(layout, override.matrixPosition),
-      actuationMillimeters: wootingTravelToMillimeters(override.actuationRaw),
-    }));
-  }
 }

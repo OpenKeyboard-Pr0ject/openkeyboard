@@ -1,5 +1,6 @@
 import type { AnalogKeySource } from "../keyboard/analog-keys";
-import type { KeyboardProfileReader } from "../keyboard/keyboard-profile";
+import type { KeyboardProfileEditor, KeyboardProfileReader } from "../keyboard/keyboard-profile";
+import type { KeyboardDefinitionLoader, KeymapReader } from "../keyboard/keymap";
 
 export interface KeyboardIdentity {
   readonly vendorName: string;
@@ -10,10 +11,16 @@ export interface KeyboardIdentity {
   readonly hardwareVerified: boolean;
 }
 
-export interface KeyboardSession {
-  readonly device: HIDDevice;
+export interface KeyboardCapabilities {
   readonly analogKeys?: AnalogKeySource;
   readonly profiles?: KeyboardProfileReader;
+  readonly profileEditor?: KeyboardProfileEditor;
+  readonly keymap?: KeymapReader;
+  readonly definitionLoader?: KeyboardDefinitionLoader;
+}
+
+export interface KeyboardSession extends KeyboardCapabilities {
+  readonly device: HIDDevice;
   readIdentity(): Promise<KeyboardIdentity>;
   close(): Promise<void>;
 }

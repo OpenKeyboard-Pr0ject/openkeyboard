@@ -4,15 +4,20 @@ import { WootingProtocolError } from "./wooting-codec";
 import { hidUsageForWootingKeyCode, NO_HID_USAGE, UNASSIGNED_KEY_CODE } from "./wooting-key-codes";
 import { matrixColumnOf, matrixRowOf } from "./wooting-matrix";
 
-const PACKED_POSITION_RANGE = 0x10000;
-const TRAVEL_ZERO_RAW = 0x4000;
-const TRAVEL_RAW_UNITS_PER_MILLIMETER = 0x1000;
-const TRAVEL_STEPS_PER_MILLIMETER = 10;
+const PRECISE_TRAVEL_FLAG = 0x4000;
+const PRECISE_TRAVEL_UNITS_PER_MILLIMETER = 0x1000;
+const PRECISE_ENTRY_POSITION_RANGE = 0x10000;
+const LEGACY_TRAVEL_MAX_RAW = 0xff;
+const LEGACY_TRAVEL_MAX_MILLIMETERS = 4.0;
+const LEGACY_ENTRY_POSITION_RANGE = 0x100;
+const TRAVEL_STEPS_PER_MILLIMETER = 20;
+const ENABLED = 1;
+const DISABLED = 0;
 
 const MetadataField = { name: 1, color: 2, icon: 3 } as const;
 const ColorField = { red: 1, green: 2, blue: 3 } as const;
 const MappingField = { row: 1, keyCodes: 1 } as const;
-const ActuationField = { perKey: 4, packedEntries: 1 } as const;
+const ActuationField = { legacyPerKey: 2, precisePerKey: 4, entries: 1 } as const;
 const KeyboardProfileField = { settings: 1 } as const;
 const ProfileSettingsField = {
   actuation: 1,
@@ -27,6 +32,8 @@ export interface WootingProfileSettings {
   readonly rapidTriggerSensitivityRaw: number;
   readonly continuousRapidTriggerEnabled: boolean;
 }
+
+export type WootingProfileSettingsChange = Partial<WootingProfileSettings>;
 
 export interface WootingProfileMetadata {
   readonly name: string;
@@ -61,10 +68,17 @@ export function decodeKeyMapping(payload: Uint8Array): MatrixKey[] {
 }
 
 export function decodeActuationOverrides(payload: Uint8Array): WootingKeyActuation[] {
-  const entries = ProtobufMessage.decode(payload).message(ActuationField.perKey).packedVarints(ActuationField.packedEntries);
-  return entries.map((entry) => ({
-    matrixPosition: entry % PACKED_POSITION_RANGE,
-    actuationRaw: Math.floor(entry / PACKED_POSITION_RANGE),
+  const actuationProfile = ProtobufMessage.decode(payload);
+  return [
+    ...unpackKeyActuations(actuationProfile.message(ActuationField.precisePerKey), PRECISE_ENTRY_POSITION_RANGE),
+    ...unpackKeyActuations(actuationProfile.message(ActuationField.legacyPerKey), LEGACY_ENTRY_POSITION_RANGE),
+  ];
+}
+
+function unpackKeyActuations(perKey: ProtobufMessage, positionRange: number): WootingKeyActuation[] {
+  return perKey.repeatedVarints(ActuationField.entries).map((entry) => ({
+    matrixPosition: entry % positionRange,
+    actuationRaw: Math.floor(entry / positionRange),
   }));
 }
 
@@ -78,8 +92,38 @@ export function decodeProfileSettings(payload: Uint8Array): WootingProfileSettin
   };
 }
 
+export function applyProfileSettingsChange(payload: Uint8Array, change: WootingProfileSettingsChange): Uint8Array<ArrayBuffer> {
+  const profile = ProtobufMessage.decode(payload);
+  const updatedSettings = settingsFieldUpdates(change).reduce(
+    (settings, [fieldNumber, value]) => settings.withVarint(fieldNumber, value),
+    profile.message(KeyboardProfileField.settings),
+  );
+  return profile.withMessage(KeyboardProfileField.settings, updatedSettings).encode();
+}
+
+function settingsFieldUpdates(change: WootingProfileSettingsChange): Array<readonly [number, number]> {
+  const updates: Array<readonly [number, number]> = [];
+  if (change.actuationRaw !== undefined) updates.push([ProfileSettingsField.actuation, change.actuationRaw]);
+  if (change.rapidTriggerEnabled !== undefined) {
+    updates.push([ProfileSettingsField.rapidTriggerEnabled, change.rapidTriggerEnabled ? ENABLED : DISABLED]);
+  }
+  if (change.rapidTriggerSensitivityRaw !== undefined) {
+    updates.push([ProfileSettingsField.rapidTriggerSensitivity, change.rapidTriggerSensitivityRaw]);
+  }
+  if (change.continuousRapidTriggerEnabled !== undefined) {
+    updates.push([ProfileSettingsField.continuousRapidTriggerDisabled, change.continuousRapidTriggerEnabled ? DISABLED : ENABLED]);
+  }
+  return updates;
+}
+
+export function millimetersToPreciseTravel(millimeters: number): number {
+  return PRECISE_TRAVEL_FLAG + Math.round(millimeters * PRECISE_TRAVEL_UNITS_PER_MILLIMETER);
+}
+
 export function wootingTravelToMillimeters(raw: number): number {
-  const millimeters = (raw - TRAVEL_ZERO_RAW) / TRAVEL_RAW_UNITS_PER_MILLIMETER;
+  const millimeters = raw >= PRECISE_TRAVEL_FLAG
+    ? (raw - PRECISE_TRAVEL_FLAG) / PRECISE_TRAVEL_UNITS_PER_MILLIMETER
+    : (raw / LEGACY_TRAVEL_MAX_RAW) * LEGACY_TRAVEL_MAX_MILLIMETERS;
   return Math.round(millimeters * TRAVEL_STEPS_PER_MILLIMETER) / TRAVEL_STEPS_PER_MILLIMETER;
 }
 

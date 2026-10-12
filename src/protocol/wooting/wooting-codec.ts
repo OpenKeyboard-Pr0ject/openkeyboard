@@ -1,5 +1,5 @@
 import { formatHex } from "../../shared/hex";
-import type { WootingCommandId } from "./wooting-constants";
+import type { WootingCommandId, WootingReportStorageId, WootingReportTypeId } from "./wooting-constants";
 
 const COMMAND_MAGIC = [0xd1, 0xda] as const;
 const COMMAND_PARAMETER_BYTES = 4;
@@ -12,6 +12,7 @@ const REPLY_PAYLOAD_OFFSET = 6;
 const REPLY_SUCCESS_STATUS = 0x88;
 
 const FIRMWARE_VERSION_BYTES = 3;
+const REPORT_LENGTH_BYTES = 2;
 
 export class WootingProtocolError extends Error {
   constructor(message: string) {
@@ -20,9 +21,29 @@ export class WootingProtocolError extends Error {
   }
 }
 
-export function encodeWootingCommand(command: WootingCommandId, reportLength: number): Uint8Array<ArrayBuffer> {
+export function encodeWootingCommand(
+  command: WootingCommandId,
+  parameters: readonly number[],
+  reportLength: number,
+): Uint8Array<ArrayBuffer> {
+  if (parameters.length > COMMAND_PARAMETER_BYTES) {
+    throw new WootingProtocolError(`A command carries at most ${COMMAND_PARAMETER_BYTES} parameter bytes.`);
+  }
   const report = new Uint8Array(Math.max(reportLength, MINIMUM_COMMAND_LENGTH));
-  report.set([...COMMAND_MAGIC, command]);
+  report.set([...COMMAND_MAGIC, command, ...parameters]);
+  return report;
+}
+
+export function encodeWootingReport(
+  reportType: WootingReportTypeId,
+  storage: WootingReportStorageId,
+  payload?: Uint8Array,
+): Uint8Array<ArrayBuffer> {
+  const header = [...COMMAND_MAGIC, reportType, storage];
+  if (!payload) return Uint8Array.from(header);
+  const report = new Uint8Array(header.length + REPORT_LENGTH_BYTES + payload.length);
+  report.set([...header, payload.length & 0xff, payload.length >> 8]);
+  report.set(payload, header.length + REPORT_LENGTH_BYTES);
   return report;
 }
 
