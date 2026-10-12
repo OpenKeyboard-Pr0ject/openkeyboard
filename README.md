@@ -36,7 +36,14 @@ tests/          Unit tests with fake HID devices replaying captured replies
 
 A driver opens a `KeyboardSession`, which may offer optional capabilities: `profiles`, `profileEditor`, `keymap`, `definitionLoader` and `analogKeys`. The UI shows one panel per capability, so a new vendor only needs a codec under `src/protocol/`, a driver under `src/drivers/`, and an entry in `keyboard-driver-registry.ts`.
 
-## Protocol notes
+## Documentation
 
-- [Wooting](docs/wooting.md): commands, profile and per-key formats, travel encodings, the analog key stream, and the write protocol.
-- [VIA and Vial](docs/via.md): raw HID commands, the Vial definition, KLE layouts and keycodes.
+Start with [docs/README.md](docs/README.md).
+
+- [Architecture](docs/architecture.md): layers, capabilities, the safe write path, and tests.
+- [Wooting protocol](docs/wooting.md): commands, profiles, per-key formats, travel encodings, the analog stream, and writing.
+- [VIA and Vial](docs/via.md): raw HID commands, Vial definitions, KLE layouts, and keycodes.
+- [WebHID notes](docs/webhid.md): browser, Windows, and node-hid behavior.
+- [Reverse engineering](docs/reverse-engineering.md): safety rules, tools, and the experiment log.
+- [Background](docs/background.md): OpenMouse, related projects, and licensing.
+- [Open questions](docs/open-questions.md): unknowns and next steps.
