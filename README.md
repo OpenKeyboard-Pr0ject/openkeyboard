@@ -1,0 +1,42 @@
+# OpenKeyboard
+
+Browser-based control panel for gaming keyboards. It talks to the keyboard over WebHID, so it needs Chrome or Edge on desktop. No vendor app or driver install is required.
+
+## Status
+
+OpenKeyboard detects a supported keyboard, connects to it, and reads its identity and firmware version.
+
+| Keyboard family | What OpenKeyboard does | Hardware status |
+|---|---|---|
+| Wooting (config interface `0xFF55`) | Shows every stored profile: name, color, actuation point, Rapid Trigger (on/off, sensitivity, continuous), per-key actuation and per-key Rapid Trigger. Shows live analog key input. **Edits** all of these settings in any stored profile without switching profiles | Verified on a Wooting 80HE TenZ (`0x31E3:0x1402`), firmware 2.14.0 and 2.14.1, Windows 11. Editing is enabled only on that model |
+| QMK with VIA or Vial (raw HID `0xFF60`) | VIA and Vial protocol versions, and every keymap layer drawn on the physical layout | Not yet verified on hardware. Built from the QMK and Vial sources and tested against a simulated keyboard |
+
+Other Wooting boards are detected but shown as not yet verified.
+
+## Development
+
+```
+npm install
+npm run dev      # http://localhost:5173
+npm run check    # typecheck, tests, production build
+```
+
+## Architecture
+
+```
+src/
+  hid/          WebHID helpers: collection lookup, report sizes, waiting for input reports
+  keyboard/     Vendor-neutral model: profiles, keymaps, analog readings, key names
+  protocol/     Transport-independent codecs, one folder per protocol family
+  drivers/      KeyboardDriver implementations and the driver registry
+  connection/   KeyboardConnection: authorization, auto-reconnect, unplug handling
+  ui/           DOM rendering of the connection state and the capability panels
+tests/          Unit tests with fake HID devices replaying captured replies
+```
+
+A driver opens a `KeyboardSession`, which may offer optional capabilities: `profiles`, `profileEditor`, `keymap`, `definitionLoader` and `analogKeys`. The UI shows one panel per capability, so a new vendor only needs a codec under `src/protocol/`, a driver under `src/drivers/`, and an entry in `keyboard-driver-registry.ts`.
+
+## Protocol notes
+
+- [Wooting](docs/wooting.md): commands, profile and per-key formats, travel encodings, the analog key stream, and the write protocol.
+- [VIA and Vial](docs/via.md): raw HID commands, the Vial definition, KLE layouts and keycodes.
