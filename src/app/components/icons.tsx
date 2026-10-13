@@ -21,7 +21,7 @@ function Icon({ children, ...props }: IconProps & { children: ReactNode }) {
   );
 }
 
-export function LogoIcon(props: IconProps) {
+export function LogoIcon() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="512" height="512">
 		<defs>
