@@ -18,9 +18,23 @@ What is still unknown, what is implemented but untested, and what would come nex
 | How Wootility converts a legacy 8-bit per-key list | Save TenZ Ultra Profile once in Wootility and compare `0x31` before and after |
 | Whether other Wooting models (60HE+, Two HE, UwU) share the 80HE layout | Needs those keyboards. The read path already accepts any `0xFF55` Wooting device but marks it unverified |
 
+## Razer unknowns
+
+| Question | How to settle it |
+|---|---|
+| The HyperSpeed receiver path (`0x0271`): transaction id, timing, battery while unplugged | Switch the keyboard to HyperSpeed mode with the cable out, connect the receiver in OpenKeyboard, and compare every read with the cable readings |
+| What `00:87` (`02 03 01 00`) and the second layout byte (`82`) mean | Compare with another Razer keyboard or another layout |
+| Why the low battery threshold reads `FF` | Read `07:82` in wireless mode |
+| Which effect ids Razer Synapse writes, and whether it uses the custom frame (`0F:03`) | Capture Synapse with USBPcap while it applies a per-key effect, then read `0F:82` |
+| Profiles in onboard memory | Capture Synapse while it switches profiles. No profile command is known yet |
+| How Chrome on Linux or macOS handles MI_03 | Grant the keyboard there and check `getDevices()` for a `0x0C:0x01` collection with a 90-byte feature report |
+| Whether other Razer keyboards share the layout | Needs those keyboards. The driver accepts only the two BlackWidow V3 Mini product ids |
+
 ## Implemented but not verified on hardware
 
 - **VIA and Vial keymaps:** see the checklist at the end of [via.md](via.md).
+- **Razer HyperSpeed receiver:** reads go through it, but the keyboard was on the cable, so every reply said "no response".
+- **Razer in Chrome:** Chrome on Windows does not offer the control interface to web pages (see [razer.md](razer.md#chrome-on-windows)), so the browser app cannot change the keyboard there. Chrome on Linux and macOS has not been tried.
 - **Linux:** udev rules for `hidraw` access have not been written or tested.
 - **Wooting models other than the 80HE:** reads are shown as "Not yet verified on hardware", and editing is disabled.
 
@@ -33,3 +47,4 @@ What is still unknown, what is implemented but untested, and what would come nex
 5. **VIA and Vial editing:** set keycode (`05`) is simple, but Vial keyboards may need the unlock flow. Implement only after the read path is verified on hardware.
 6. **Keyboard drawing for Wooting:** reuse the KLE renderer with a built-in 80HE layout, so per-key settings can be picked by clicking keys instead of a list.
 7. **Live analog view on the keyboard drawing:** color each key by travel.
+8. **Razer per-key colors:** through the custom frame (`0F:03`) or the standard LampArray interface (MI_04, usage page `0x59`).

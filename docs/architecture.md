@@ -13,9 +13,11 @@ src/
   protocol/     pure codecs and command channels, one folder per protocol family
     protobuf/     minimal protobuf reader and writer that preserves unknown fields
     wooting/      Wooting config protocol, analog stream, per-key formats
+    razer/        Razer 90-byte control report, lighting and device settings codecs
     via/          VIA and Vial commands, KLE layouts, QMK keycodes, xz
   drivers/      KeyboardDriver implementations that turn codecs into capabilities
     wooting/      reader, editor, analog source, driver
+    razer/        lighting, device settings, driver
     via/          keymap reader, driver
   connection/   KeyboardConnection: authorization, reconnect, unplug, state
   ui/           DOM rendering: connection card and one panel per capability
@@ -44,13 +46,23 @@ interface KeyboardCapabilities {
   readonly profileEditor?: KeyboardProfileEditor; // Wooting, write-verified models only
   readonly keymap?: KeymapReader;                 // VIA and Vial
   readonly definitionLoader?: KeyboardDefinitionLoader; // plain VIA only
+  readonly lighting?: KeyboardLightingReader;            // Razer
+  readonly lightingEditor?: KeyboardLightingEditor;      // Razer, write-verified models only
+  readonly deviceSettings?: KeyboardDeviceSettingsReader; // Razer: battery, polling rate, sleep timer
+  readonly deviceSettingsEditor?: KeyboardDeviceSettingsEditor; // Razer, write-verified models only
 }
 ```
 
-- **Registry:** `keyboard-driver-registry.ts` lists the drivers in order: Wooting first, then VIA. The browser chooser uses the union of their `requestFilters`. The first driver whose `supports()` accepts a granted `HIDDevice` opens it.
+- **Registry:** `keyboard-driver-registry.ts` lists the drivers in order: Wooting, Razer, then VIA. The browser chooser uses the union of their `requestFilters`. The first driver whose `supports()` accepts a granted `HIDDevice` opens it.
 - **One HIDDevice per collection:** a physical keyboard shows up as several `HIDDevice` objects, one per top-level collection. Drivers match exactly one of them, the config collection, so the keyboard is not listed twice. The Wooting analog source finds its sibling interface (`0xFF53`) at runtime through `listAuthorizedDevices`. See [webhid.md](webhid.md).
 - **Capabilities are optional:** the UI renders one panel per capability that a session offers. A new vendor only adds a codec, a driver and a registry entry.
-- **Editing is gated:** `profileEditor` exists only for product ids in `WOOTING_WRITE_VERIFIED_PRODUCT_IDS` (the 80HE, `0x1402`). Other Wooting boards stay read-only, even though the protocol is probably shared.
+- **Editing is gated:** `profileEditor` exists only for product ids in `WOOTING_WRITE_VERIFIED_PRODUCT_IDS` (the 80HE, `0x1402`). Other Wooting boards stay read-only, even though the protocol is probably shared. In the same way, `lightingEditor` and `deviceSettingsEditor` exist only for `RAZER_WRITE_VERIFIED_PRODUCT_IDS` (the wired BlackWidow V3 Mini, `0x0258`).
+
+## Device sources
+
+`main.ts` gives `KeyboardConnection` the browser's `navigator.hid`. The connection only relies on the part of the `HID` and `HIDDevice` interfaces that the drivers use, so the OpenKeyboard desktop app reuses these modules with its own native HID implementation in place of WebHID.
+
+If no granted device is supported, `KeyboardConnection` asks each driver's optional `explainUnusableInterface` and shows the first explanation as a failed connection. The Razer driver uses it when the browser shared only the media key or LampArray interfaces of a BlackWidow V3 Mini.
 
 ## Connection lifecycle
 
@@ -75,6 +87,9 @@ Both protocol families serialize traffic through a promise queue, because a repl
 - **`WootingCommandChannel`:**
   - `request(command, parameters)` sends a feature report and waits up to 1 s for an input report whose magic and command byte match.
   - `writeReport(report)` sends an output report on the smallest declared output report that fits, zero-padded to its declared size.
+- **`RazerCommandChannel`:**
+  - `request(command, args)` sends a 90-byte feature report without a report ID, then reads the feature report back every 8 ms until the status leaves "new" or "busy" and the reply echoes the command. It gives up after 60 reads.
+  - It keeps the last 90 bytes of the reply, so a reply that starts with the report ID byte also works.
 - **`ViaCommandChannel`:**
   - `request(command, args)` sends a 32-byte output report and waits for the reply that echoes the command, or `0xFF` for unsupported.
   - `requestVial(subcommand, args)` takes the next input report, because Vial replies do not echo.
@@ -108,11 +123,21 @@ Both protocol families serialize traffic through a promise queue, because a repl
 
 The UI only builds a `ProfileSettingsChange` with the fields the user actually changed.
 
+### Razer writes
+
+`RazerLighting.updateLighting` and `RazerDeviceSettings.updateDeviceSettings` follow the same rules in a smaller form:
+
+1. **Validate first:** brightness must be a whole percent, colors whole numbers from 0 to 255, at most two colors per effect, polling rate one of 125, 500 and 1000 Hz, and the sleep timer whole minutes from 1 to 15.
+2. **Send only what changed:** the UI builds a `LightingChange` or `DeviceSettingsChange` with the changed fields. The effect is written before the brightness.
+3. **Verify by reading back:** the keyboard returns stored values unchanged, so every written value is read again and compared by meaning. A mismatch raises `RazerWriteNotVerifiedError`.
+
 ## UI
 
 - **Connection card:** `connection-view.ts` renders the card for the current state and creates panels for the session's capabilities. Panels implement `Panel { element; dispose() }` and are disposed when the state changes.
 - **`ProfilePanel`:** shows a tab per stored profile, the selected profile's details, and an **Edit settings** form (`ProfileSettingsForm`). The form contains a `KeySettingsSection` with one row per key that has its own settings.
 - **`LiveKeyPanel`:** subscribes to the analog stream. It keeps only the latest snapshot and renders once per animation frame, because the keyboard can send several hundred reports per second.
+- **`LightingPanel`:** shows brightness, the effect and its colors, and a **Change lighting** form (`LightingForm`). The form swaps its effect controls (`lighting-effect-options.ts`) when another effect is chosen.
+- **`DeviceSettingsPanel`:** shows battery, polling rate and sleep timer, and a **Change settings** form (`DeviceSettingsForm`).
 - **`KeymapPanel`:** draws the VIA or Vial keymap on the KLE layout with one tab per layer. It offers a file picker when a plain VIA keyboard needs its definition.
 - **Display:** millimeters are rounded to 0.05 mm and shown with two decimals, as Wootility shows them.
 
@@ -125,9 +150,11 @@ npm run check    # tsc --noEmit, vitest run, vite build
 ```
 
 - **Fixtures come from hardware:** `tests/fakes/wooting-80he-captures.ts` holds replies and writes captured from the 80HE and from Wootility. Encoder tests assert byte-exact equality with what Wootility sent, so an encoding change cannot silently diverge from the vendor tool.
+- **Razer fixtures:** `tests/fakes/razer-blackwidow-v3-mini-captures.ts` holds 90-byte replies captured from the BlackWidow V3 Mini and the effect arguments that were written and read back. Codec tests check both directions against them.
 - **Fake devices:**
   - `FakeHidDevice` stands in for a Wooting interface. It answers feature reports through a `respond` callback and records output reports.
   - `FakeHid` stands in for `navigator.hid`.
+  - `FakeRazerKeyboard` answers Razer feature reports, stores writes as the keyboard does, and can reply busy, prefix the report ID, ignore writes, or act as a receiver whose keyboard is off.
   - `FakeViaKeyboard` follows QMK's `via.c` and Vial's `vial.c`: it echoes commands, answers `0xFF` when unsupported, and serves a definition from an xz stream made with Python's `lzma.compress`.
 - **Editor tests:** they use an in-memory keyboard that stores each part per slot and decodes the storage byte, as the firmware does. One test replays the exact hardware restore performed on the Typing Profile.
 

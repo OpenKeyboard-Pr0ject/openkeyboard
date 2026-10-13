@@ -16,6 +16,8 @@ A wrong write can corrupt a profile or leave a keyboard in a bad state. These ru
 
 ## Tools
 
+The Razer findings in [razer.md](razer.md) used the same rules: a read-only allowlist for every probe, OpenRazer as the published source for command layouts, and the owner's approval before each kind of write.
+
 The scripts live outside the repository; copy them into a scratch folder with `npm install node-hid@3`. They were run on Windows 11 with Node 20.
 
 ### Enumerate interfaces
@@ -156,6 +158,17 @@ All experiments ran on 2026-10-12, on the owner's 80HE, with the owner's approva
 | 7 | Slot 1: Q actuation 1.50 mm, Q Rapid Trigger with profile sensitivity 0.30 mm, W Rapid Trigger 0.60 mm | Wootility Web | OpenKeyboard, with slot 0 active | Found `0x15`, `0x1D` and `0x3D`. Byte-identical afterwards, including `0x29`, `0x34`, `0x42` |
 
 Experiment 7 also revealed a bug. The app had been sending an empty `0x1D` before every settings write, believing it was a marker. An empty `0x1D` clears per-key Rapid Trigger. No profile had per-key Rapid Trigger at the time, so nothing was lost, and the app now sends only the parts that change.
+
+### Razer BlackWidow V3 Mini
+
+All experiments ran on 2026-10-13, on the owner's wired BlackWidow V3 Mini, with the owner's approval for brightness, effects, polling rate and the sleep timer. The writes ran through the OpenKeyboard driver code itself, with node-hid standing in for WebHID.
+
+| # | Change | Restored by | Result |
+|---|---|---|---|
+| 8 | Firmware query sent to every collection of `0x0258` and `0x0271` | Not needed | Found the control collection on MI_03 (`0x0C:0x01`) and transaction id `1F`. The receiver answered status `04` |
+| 9 | Read-only allowlist: `00:81`, `00:84`–`00:87`, `00:C0`, `07:80`–`07:84`, `0F:82`, `0F:84`, `03:80`, `03:83` | Not needed | Captured the starting state: 60 %, spectrum cycling, 1000 Hz, 900 s, 100 % charging |
+| 10 | Brightness 60 → 40 → 60 %, then 12 effects, polling 1000 → 500 → 125 → 1000 Hz, sleep 900 → 600 → 900 s | Same script | Every value read back as written. The final state was byte-identical to the start |
+| 11 | Wave with direction `01`, watched by the owner | Spectrum cycling | `01` runs left to right |
 
 ## Lessons
 
