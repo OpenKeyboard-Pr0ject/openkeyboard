@@ -7,7 +7,7 @@ import type {
   SettingRange,
 } from "../keyboard/keyboard-profile";
 import type { MatrixKey } from "../keyboard/matrix-key";
-import { actionButton, element, millimeterInput } from "./dom";
+import { actionButton, element, millimeterInput, select } from "./dom";
 
 interface KeySettings {
   readonly actuation: KeyActuationSetting;
@@ -193,14 +193,4 @@ function initialKeySettings(profile: KeyboardProfile): Map<MatrixKey, KeySetting
 
 function keyId(key: MatrixKey): string {
   return `${key.matrixRow}:${key.matrixColumn}`;
-}
-
-function select(options: ReadonlyArray<readonly [string, string]>, selected: string): HTMLSelectElement {
-  const control = element("select", "settings-form__select", options.map(([value, label]) => {
-    const option = element("option", "", [label]);
-    option.value = value;
-    return option;
-  }));
-  control.value = selected;
-  return control;
 }

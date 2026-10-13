@@ -1,8 +1,10 @@
 import type { ConnectionState, KeyboardConnection } from "../connection/keyboard-connection";
 import type { KeyboardCapabilities, KeyboardIdentity } from "../drivers/keyboard-driver";
 import { formatHex } from "../shared/hex";
+import { DeviceSettingsPanel } from "./device-settings-panel";
 import { actionButton, detailRow, element } from "./dom";
 import { KeymapPanel } from "./keymap-panel";
+import { LightingPanel } from "./lighting-panel";
 import { LiveKeyPanel } from "./live-key-panel";
 import type { Panel } from "./panel";
 import { ProfilePanel } from "./profile-panel";
@@ -81,6 +83,10 @@ function panelsFor(capabilities: KeyboardCapabilities, requestAccess: () => void
   return [
     ...(capabilities.profiles ? [new ProfilePanel(capabilities.profiles, capabilities.profileEditor)] : []),
     ...(capabilities.keymap ? [new KeymapPanel(capabilities.keymap, capabilities.definitionLoader)] : []),
+    ...(capabilities.lighting ? [new LightingPanel(capabilities.lighting, capabilities.lightingEditor)] : []),
+    ...(capabilities.deviceSettings
+      ? [new DeviceSettingsPanel(capabilities.deviceSettings, capabilities.deviceSettingsEditor)]
+      : []),
     ...(capabilities.analogKeys ? [new LiveKeyPanel(capabilities.analogKeys, requestAccess)] : []),
   ];
 }

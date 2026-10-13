@@ -9,7 +9,7 @@ import type {
   RapidTriggerSettings,
 } from "../keyboard/keyboard-profile";
 import { describeError } from "../shared/describe-error";
-import { actionButton, detailRow, element } from "./dom";
+import { actionButton, detailRow, element, panelMessage } from "./dom";
 import type { Panel } from "./panel";
 import { ProfileSettingsForm } from "./profile-settings-form";
 
@@ -45,13 +45,13 @@ export class ProfilePanel implements Panel {
   }
 
   private async load(): Promise<void> {
-    this.showDetails([message("Reading profiles…")]);
+    this.showDetails([panelMessage("Reading profiles…")]);
     try {
       const activeSlot = await this.reader.readActiveSlot();
       this.overview = { profiles: await this.reader.listProfiles(), activeSlot };
       await this.select(this.selectedSlot ?? activeSlot);
     } catch (error) {
-      this.showDetails([message(`Could not read the profiles: ${describeError(error)}`)]);
+      this.showDetails([panelMessage(`Could not read the profiles: ${describeError(error)}`)]);
     }
   }
 
@@ -61,7 +61,7 @@ export class ProfilePanel implements Panel {
     try {
       this.showProfile(await this.reader.readProfile(slot));
     } catch (error) {
-      this.showDetails([message(`Could not read profile ${slot + 1}: ${describeError(error)}`)]);
+      this.showDetails([panelMessage(`Could not read profile ${slot + 1}: ${describeError(error)}`)]);
     }
   }
 
@@ -69,7 +69,7 @@ export class ProfilePanel implements Panel {
     const editButton = this.editor
       ? [element("div", "status-card__actions", [actionButton("Edit settings", "primary", () => this.edit(profile))])]
       : [];
-    this.showDetails([...(notice ? [message(notice)] : []), ...profileDetails(profile), ...editButton]);
+    this.showDetails([...(notice ? [panelMessage(notice)] : []), ...profileDetails(profile), ...editButton]);
   }
 
   private edit(profile: KeyboardProfile): void {
@@ -153,9 +153,6 @@ function colorSwatch(color: string): HTMLElement {
   return swatch;
 }
 
-function message(text: string): HTMLElement {
-  return element("p", "panel__message", [text]);
-}
 
 function formatMillimeters(millimeters: number): string {
   return `${millimeters.toFixed(2)} mm`;

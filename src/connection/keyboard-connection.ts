@@ -1,4 +1,9 @@
-import { driverFor, isSupportedKeyboard, keyboardRequestFilters } from "../drivers/keyboard-driver-registry";
+import {
+  driverFor,
+  findUnusableKeyboardInterface,
+  isSupportedKeyboard,
+  keyboardRequestFilters,
+} from "../drivers/keyboard-driver-registry";
 import type { KeyboardCapabilities, KeyboardIdentity, KeyboardSession } from "../drivers/keyboard-driver";
 import { describeError } from "../shared/describe-error";
 
@@ -40,7 +45,8 @@ export class KeyboardConnection {
   }
 
   async requestKeyboard(): Promise<void> {
-    const filters = keyboardRequestFilters();
+    const filters = keyboardRequestFilters(); 
+	// console.log(await this.requireHid().requestDevice({ filters: []}));
     await this.connectFirstSupported(() => this.requireHid().requestDevice({ filters }));
   }
 
@@ -58,11 +64,18 @@ export class KeyboardConnection {
 
   private async connectFirstSupported(listDevices: () => Promise<HIDDevice[]>): Promise<void> {
     try {
-      const [keyboard] = (await listDevices()).filter(isSupportedKeyboard);
+      const devices = await listDevices();
+      const [keyboard] = devices.filter(isSupportedKeyboard);
       if (keyboard) await this.connect(keyboard);
+      else this.reportUnusableInterface(devices);
     } catch (error) {
       this.publish({ kind: "failed", deviceName: UNKNOWN_DEVICE_NAME, reason: describeError(error) });
     }
+  }
+
+  private reportUnusableInterface(devices: readonly HIDDevice[]): void {
+    const unusable = findUnusableKeyboardInterface(devices);
+    if (unusable) this.publish({ kind: "failed", deviceName: unusable.device.productName, reason: unusable.reason });
   }
 
   private async connectIfIdle(device: HIDDevice): Promise<void> {
@@ -114,5 +127,9 @@ function capabilitiesOf(session: KeyboardSession): KeyboardCapabilities {
     profileEditor: session.profileEditor,
     keymap: session.keymap,
     definitionLoader: session.definitionLoader,
+    lighting: session.lighting,
+    lightingEditor: session.lightingEditor,
+    deviceSettings: session.deviceSettings,
+    deviceSettingsEditor: session.deviceSettingsEditor,
   };
 }

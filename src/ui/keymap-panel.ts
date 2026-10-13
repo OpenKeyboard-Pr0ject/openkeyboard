@@ -7,7 +7,7 @@ import {
 } from "../keyboard/keymap";
 import { describeError } from "../shared/describe-error";
 import { formatHex } from "../shared/hex";
-import { actionButton, element } from "./dom";
+import { actionButton, element, panelMessage } from "./dom";
 import type { Panel } from "./panel";
 
 export class KeymapPanel implements Panel {
@@ -35,7 +35,7 @@ export class KeymapPanel implements Panel {
   }
 
   private async load(): Promise<void> {
-    this.show([message("Reading keymap…")]);
+    this.show([panelMessage("Reading keymap…")]);
     try {
       this.keymap = await this.reader.readKeymap();
       this.selectedLayer = Math.min(this.selectedLayer, this.keymap.layers.length - 1);
@@ -47,9 +47,9 @@ export class KeymapPanel implements Panel {
 
   private showLoadProblem(error: unknown): void {
     if (error instanceof KeyboardDefinitionRequiredError && this.definitionLoader) {
-      this.show([message(error.message), definitionFilePicker((json) => this.useDefinition(json))]);
+      this.show([panelMessage(error.message), definitionFilePicker((json) => this.useDefinition(json))]);
     } else {
-      this.show([message(`Could not read the keymap: ${describeError(error)}`)]);
+      this.show([panelMessage(`Could not read the keymap: ${describeError(error)}`)]);
     }
   }
 
@@ -58,7 +58,7 @@ export class KeymapPanel implements Panel {
       this.definitionLoader?.loadDefinition(definitionJson);
       void this.load();
     } catch (error) {
-      this.show([message(describeError(error)), definitionFilePicker((json) => this.useDefinition(json))]);
+      this.show([panelMessage(describeError(error)), definitionFilePicker((json) => this.useDefinition(json))]);
     }
   }
 
@@ -125,6 +125,3 @@ function definitionFilePicker(onDefinition: (definitionJson: string) => void): H
   return element("label", "keymap__file-label", ["Load VIA definition (.json) ", input]);
 }
 
-function message(text: string): HTMLElement {
-  return element("p", "panel__message", [text]);
-}

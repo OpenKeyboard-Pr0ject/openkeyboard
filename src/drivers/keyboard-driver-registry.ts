@@ -1,9 +1,10 @@
 import { formatHex } from "../shared/hex";
 import type { KeyboardDriver } from "./keyboard-driver";
+import { razerKeyboardDriver } from "./razer/razer-keyboard-driver";
 import { viaKeyboardDriver } from "./via/via-keyboard-driver";
 import { wootingKeyboardDriver } from "./wooting/wooting-keyboard-driver";
 
-const keyboardDrivers: readonly KeyboardDriver[] = [wootingKeyboardDriver, viaKeyboardDriver];
+const keyboardDrivers: readonly KeyboardDriver[] = [wootingKeyboardDriver, razerKeyboardDriver, viaKeyboardDriver];
 
 export class UnsupportedKeyboardError extends Error {
   constructor(device: HIDDevice) {
@@ -19,6 +20,21 @@ export function keyboardRequestFilters(): HIDDeviceFilter[] {
 
 export function isSupportedKeyboard(device: HIDDevice): boolean {
   return keyboardDrivers.some((driver) => driver.supports(device));
+}
+
+export interface UnusableKeyboardInterface {
+  readonly device: HIDDevice;
+  readonly reason: string;
+}
+
+export function findUnusableKeyboardInterface(devices: readonly HIDDevice[]): UnusableKeyboardInterface | undefined {
+  for (const device of devices) {
+    const reason = keyboardDrivers
+      .map((driver) => driver.explainUnusableInterface?.(device))
+      .find((explanation) => explanation !== undefined);
+    if (reason) return { device, reason };
+  }
+  return undefined;
 }
 
 export function driverFor(device: HIDDevice): KeyboardDriver {

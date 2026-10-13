@@ -265,6 +265,57 @@ body {
   font-size: 0.875rem;
 }
 
+.settings-form__group {
+  display: grid;
+  gap: 12px;
+}
+
+.settings-form__group:empty {
+  display: none;
+}
+
+.settings-form__field[hidden] {
+  display: none;
+}
+
+.settings-form__slider {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  max-width: 260px;
+}
+
+.settings-form__range {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--color-accent);
+}
+
+.settings-form__value {
+  min-width: 48px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
+.settings-form__color {
+  width: 48px;
+  height: 32px;
+  padding: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-background);
+  cursor: pointer;
+}
+
+.lighting__swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
 .key-settings {
   display: grid;
   gap: 10px;

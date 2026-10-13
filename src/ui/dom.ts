@@ -31,3 +31,21 @@ export function actionButton(label: string, variant: "primary" | "secondary", on
   button.addEventListener("click", onClick);
   return button;
 }
+
+export function select(options: ReadonlyArray<readonly [string, string]>, selected: string): HTMLSelectElement {
+  const control = element("select", "settings-form__select", options.map(([value, label]) => {
+    const option = element("option", "", [label]);
+    option.value = value;
+    return option;
+  }));
+  control.value = selected;
+  return control;
+}
+
+export function formField(labelText: string, control: HTMLElement): HTMLLabelElement {
+  return element("label", "settings-form__field", [element("span", "details__label", [labelText]), control]);
+}
+
+export function panelMessage(text: string): HTMLElement {
+  return element("p", "panel__message", [text]);
+}

@@ -4,7 +4,7 @@ import type {
   ProfileSettingsChange,
 } from "../keyboard/keyboard-profile";
 import { describeError } from "../shared/describe-error";
-import { actionButton, element, millimeterInput } from "./dom";
+import { actionButton, element, formField, millimeterInput } from "./dom";
 import { KeySettingsSection } from "./key-settings-section";
 
 export interface ProfileSettingsFormCallbacks {
@@ -45,10 +45,10 @@ export class ProfileSettingsForm {
       actionButton("Cancel", "secondary", () => this.callbacks.onCancel()),
     ];
     this.element = element("form", "settings-form", [
-      field("Actuation point (mm)", this.actuation),
-      field("Rapid Trigger", this.rapidTriggerEnabled),
-      field("Rapid Trigger sensitivity (mm)", this.sensitivity),
-      field("Continuous Rapid Trigger", this.continuous),
+      formField("Actuation point (mm)", this.actuation),
+      formField("Rapid Trigger", this.rapidTriggerEnabled),
+      formField("Rapid Trigger sensitivity (mm)", this.sensitivity),
+      formField("Continuous Rapid Trigger", this.continuous),
       this.keySettings.element,
       element("p", "settings-form__note", [targetDescription(profile.name, isActiveProfile)]),
       element("div", "status-card__actions", this.buttons),
@@ -110,8 +110,4 @@ function checkbox(checked: boolean): HTMLInputElement {
   input.type = "checkbox";
   input.checked = checked;
   return input;
-}
-
-function field(labelText: string, control: HTMLInputElement): HTMLLabelElement {
-  return element("label", "settings-form__field", [element("span", "details__label", [labelText]), control]);
 }
