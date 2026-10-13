@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { type ConnectionState, KeyboardConnection } from "../../src/connection/keyboard-connection";
 import { FakeHid } from "../fakes/fake-hid";
 import { FakeHidDevice } from "../fakes/fake-hid-device";
+import { FakeRazerKeyboard, razerConsumerKeysCollection } from "../fakes/fake-razer-keyboard";
 import { firmwareVersionReply } from "../fakes/wooting-80he-captures";
 
 function respondingKeyboard(): FakeHidDevice {
@@ -40,6 +41,31 @@ describe("KeyboardConnection", () => {
     expect(states).toEqual([{ kind: "disconnected" }]);
   });
 
+  it("explains a Razer keyboard whose control interface the browser did not share", async () => {
+    const mediaKeysOnly = new FakeRazerKeyboard({ collections: [razerConsumerKeysCollection] }).asHidDevice();
+    const connection = new KeyboardConnection(new FakeHid([], [mediaKeysOnly]).asHid());
+    const states = recordStates(connection);
+
+    await connection.requestKeyboard();
+
+    expect(states.at(-1)).toMatchObject({
+      kind: "failed",
+      deviceName: "Razer BlackWidow V3 Mini",
+      reason: expect.stringContaining("not its control interface"),
+    });
+  });
+
+  it("connects to the Razer control interface when the browser shares it next to others", async () => {
+    const mediaKeys = new FakeRazerKeyboard({ collections: [razerConsumerKeysCollection] }).asHidDevice();
+    const control = new FakeRazerKeyboard().asHidDevice();
+    const connection = new KeyboardConnection(new FakeHid([mediaKeys, control]).asHid());
+    const states = recordStates(connection);
+
+    await connection.start();
+
+    expect(states.at(-1)).toMatchObject({ kind: "connected", identity: { vendorName: "Razer" } });
+  });
+
   it("asks the browser only for interfaces a driver supports", async () => {
     const hid = new FakeHid([], [respondingKeyboard().asHidDevice()]);
     const connection = new KeyboardConnection(hid.asHid());
@@ -49,6 +75,8 @@ describe("KeyboardConnection", () => {
     expect(hid.requestedFilters).toEqual([
       { vendorId: 0x31e3, usagePage: 0xff55, usage: 0x01 },
       { vendorId: 0x31e3, usagePage: 0xff53, usage: 0x01 },
+      { vendorId: 0x1532, productId: 0x0258, usagePage: 0x0c, usage: 0x01 },
+      { vendorId: 0x1532, productId: 0x0271, usagePage: 0x0c, usage: 0x01 },
       { usagePage: 0xff60, usage: 0x61 },
     ]);
   });
