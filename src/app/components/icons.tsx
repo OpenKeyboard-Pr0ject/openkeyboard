@@ -23,10 +23,30 @@ function Icon({ children, ...props }: IconProps & { children: ReactNode }) {
 
 export function LogoIcon(props: IconProps) {
   return (
-    <Icon {...props}>
-      <rect x="3" y="6" width="18" height="12" rx="3" />
-      <path d="M7 10h.01M11 10h.01M15 10h.01M8 14h8" />
-    </Icon>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="512" height="512">
+		<defs>
+			<linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+			<stop offset="0" stop-color="#7C5CFF"/>
+			<stop offset="1" stop-color="#22D3EE"/>
+			</linearGradient>
+		</defs>
+		<rect x="16" y="58" width="224" height="140" rx="30" fill="#15171C"/>
+		<g fill="#fff" fill-opacity=".9">
+			<rect x="42" y="78" width="28" height="28" rx="7"/>
+			<rect x="78" y="78" width="28" height="28" rx="7"/>
+			<rect x="114" y="78" width="28" height="28" rx="7"/>
+			<rect x="150" y="78" width="28" height="28" rx="7"/>
+			<rect x="186" y="78" width="28" height="28" rx="7"/>
+			<rect x="42" y="114" width="28" height="28" rx="7"/>
+			<rect x="78" y="114" width="28" height="28" rx="7"/>
+			<rect x="150" y="114" width="28" height="28" rx="7"/>
+			<rect x="186" y="114" width="28" height="28" rx="7"/>
+			<rect x="42" y="150" width="28" height="28" rx="7"/>
+			<rect x="78" y="150" width="100" height="28" rx="7"/>
+			<rect x="186" y="150" width="28" height="28" rx="7"/>
+		</g>
+		<rect x="114" y="114" width="28" height="28" rx="7" fill="url(#g)"/>
+	</svg>
   );
 }
 
