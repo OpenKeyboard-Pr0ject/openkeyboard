@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+@source "../";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --app-background: #f3f4f7;
+  --app-sidebar: #ffffff;
+  --app-panel: #ffffff;
+  --app-panel-raised: #f1f3f6;
+  --app-line: #e0e3e9;
+  --app-foreground: #15181d;
+  --app-muted: #5d6573;
+  --app-accent: #2f6fed;
+  --app-accent-soft: #e5edfd;
+  --app-accent-foreground: #ffffff;
+  --app-positive: #1f9d55;
+  --app-warning: #c98a00;
+  --app-negative: #d64545;
+  color-scheme: light;
+}
+
+.dark {
+  --app-background: #111214;
+  --app-sidebar: #18191c;
+  --app-panel: #1c1d21;
+  --app-panel-raised: #25262b;
+  --app-line: #2c2e34;
+  --app-foreground: #eef0f4;
+  --app-muted: #9aa1ad;
+  --app-accent: #5b8cff;
+  --app-accent-soft: #1f2a44;
+  --app-accent-foreground: #ffffff;
+  --app-positive: #3ccf7e;
+  --app-warning: #f0b429;
+  --app-negative: #f26b6b;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-app: var(--app-background);
+  --color-sidebar: var(--app-sidebar);
+  --color-panel: var(--app-panel);
+  --color-raised: var(--app-panel-raised);
+  --color-line: var(--app-line);
+  --color-fg: var(--app-foreground);
+  --color-muted: var(--app-muted);
+  --color-accent: var(--app-accent);
+  --color-accent-soft: var(--app-accent-soft);
+  --color-on-accent: var(--app-accent-foreground);
+  --color-positive: var(--app-positive);
+  --color-warning: var(--app-warning);
+  --color-negative: var(--app-negative);
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --app-background: #111214;
+    color-scheme: dark;
+  }
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--app-background);
+  color: var(--app-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}

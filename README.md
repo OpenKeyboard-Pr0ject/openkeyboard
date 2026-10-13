@@ -9,10 +9,14 @@ OpenKeyboard detects a supported keyboard, connects to it, and reads its identit
 | Keyboard family | What OpenKeyboard does | Hardware status |
 |---|---|---|
 | Wooting (config interface `0xFF55`) | Shows every stored profile: name, color, actuation point, Rapid Trigger (on/off, sensitivity, continuous), per-key actuation and per-key Rapid Trigger. Shows live analog key input. **Edits** all of these settings in any stored profile without switching profiles | Verified on a Wooting 80HE TenZ (`0x31E3:0x1402`), firmware 2.14.0 and 2.14.1, Windows 11. Editing is enabled only on that model |
-| Razer BlackWidow V3 Mini (control collection `0x0C:0x01`, 90-byte feature report) | Shows and **edits** brightness and the lighting effect (static, spectrum cycling, breathing, wave, reactive, starlight, off), polling rate and sleep timer. Shows battery level and charging | Protocol verified on the wired keyboard (`0x1532:0x0258`), firmware 2.3, Windows 11, through node-hid. **Chrome on Windows does not offer its control interface to web pages**, so in the browser the app explains this and points to the OpenKeyboard desktop app, which reaches it natively. The HyperSpeed receiver (`0x0271`) is read-only and not yet verified |
+| Razer BlackWidow V3 Mini (control collection `0x0C:0x01`, 90-byte feature report) | Shows and **edits** brightness and the lighting effect (static, spectrum cycling, breathing, wave, reactive, starlight, off), polling rate and sleep timer. Shows battery level and charging | Protocol verified on the wired keyboard (`0x1532:0x0258`), firmware 2.3, Windows 11, through node-hid. **Chrome on Windows does not offer its control interface to web pages**, so in the browser the app explains this and points to the [OpenKeyboard desktop app](../openkeyboard-desktop), which reaches it natively. The HyperSpeed receiver (`0x0271`) is read-only and not yet verified |
 | QMK with VIA or Vial (raw HID `0xFF60`) | VIA and Vial protocol versions, and every keymap layer drawn on the physical layout | Not yet verified on hardware. Built from the QMK and Vial sources and tested against a simulated keyboard |
 
 Other Wooting boards are detected but shown as not yet verified.
+
+## Browser and desktop
+
+This repository is the browser app. It shows only what a browser can do. The [OpenKeyboard desktop app](../openkeyboard-desktop) runs the same `src/` in a Tauri window with native HID access, so it also reaches interfaces that browsers hide, such as the Razer control interface on Windows. Keep `src/` free of browser-only assumptions beyond the `HID` and `HIDDevice` interfaces, because the desktop app implements those itself.
 
 ## Development
 
@@ -31,11 +35,11 @@ src/
   protocol/     Transport-independent codecs, one folder per protocol family
   drivers/      KeyboardDriver implementations and the driver registry
   connection/   KeyboardConnection: authorization, auto-reconnect, unplug handling
-  ui/           DOM rendering of the connection state and the capability panels
+  app/          React UI with Tailwind: app shell, sidebar, one page per capability, light and dark themes
 tests/          Unit tests with fake HID devices replaying captured replies
 ```
 
-A driver opens a `KeyboardSession`, which may offer optional capabilities: `profiles`, `profileEditor`, `keymap`, `definitionLoader`, `analogKeys`, `lighting`, `lightingEditor`, `deviceSettings` and `deviceSettingsEditor`. The UI shows one panel per capability, so a new vendor only needs a codec under `src/protocol/`, a driver under `src/drivers/`, and an entry in `keyboard-driver-registry.ts`.
+A driver opens a `KeyboardSession`, which may offer optional capabilities: `profiles`, `profileEditor`, `keymap`, `definitionLoader`, `analogKeys`, `lighting`, `lightingEditor`, `deviceSettings` and `deviceSettingsEditor`. The UI shows one sidebar section per capability, so a new vendor only needs a codec under `src/protocol/`, a driver under `src/drivers/`, and an entry in `keyboard-driver-registry.ts`.
 
 ## Documentation
 

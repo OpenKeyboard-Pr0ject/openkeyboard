@@ -1,12 +1,12 @@
 # Architecture
 
-OpenKeyboard is a single-page web app (Vite, TypeScript, no UI framework) that talks to keyboards through WebHID. Everything runs in the browser. The only runtime dependency is [xz-decompress](https://github.com/httptoolkit/xz-decompress), used to unpack Vial keyboard definitions.
+OpenKeyboard is a single-page web app (Vite, TypeScript, React, Tailwind CSS) that talks to keyboards through WebHID. Everything runs in the browser. Besides React, the only runtime dependency is [xz-decompress](https://github.com/httptoolkit/xz-decompress), used to unpack Vial keyboard definitions.
 
 ## Layers
 
 ```
 src/
-  main.ts       creates KeyboardConnection(navigator.hid) and mounts the view
+  main.tsx      creates KeyboardConnection(navigator.hid) and renders <App>
   hid/          WebHID helpers that know nothing about vendors
   shared/       hex formatting and error descriptions
   keyboard/     vendor-neutral model: profiles, keymaps, analog readings, key names
@@ -20,7 +20,7 @@ src/
     razer/        lighting, device settings, driver
     via/          keymap reader, driver
   connection/   KeyboardConnection: authorization, reconnect, unplug, state
-  ui/           DOM rendering: connection card and one panel per capability
+  app/          React UI: App, theme, layout (sidebar), pages per capability, components, pure draft helpers
 ```
 
 Dependencies point downward only: `ui` → `connection` → `drivers` → `protocol` → `hid`, and everything may use `keyboard` and `shared`. Codecs in `protocol/` are pure functions over `Uint8Array`, so they are tested without any device.
@@ -55,12 +55,12 @@ interface KeyboardCapabilities {
 
 - **Registry:** `keyboard-driver-registry.ts` lists the drivers in order: Wooting, Razer, then VIA. The browser chooser uses the union of their `requestFilters`. The first driver whose `supports()` accepts a granted `HIDDevice` opens it.
 - **One HIDDevice per collection:** a physical keyboard shows up as several `HIDDevice` objects, one per top-level collection. Drivers match exactly one of them, the config collection, so the keyboard is not listed twice. The Wooting analog source finds its sibling interface (`0xFF53`) at runtime through `listAuthorizedDevices`. See [webhid.md](webhid.md).
-- **Capabilities are optional:** the UI renders one panel per capability that a session offers. A new vendor only adds a codec, a driver and a registry entry.
+- **Capabilities are optional:** the UI offers one sidebar section per capability that a session offers. A new vendor only adds a codec, a driver and a registry entry.
 - **Editing is gated:** `profileEditor` exists only for product ids in `WOOTING_WRITE_VERIFIED_PRODUCT_IDS` (the 80HE, `0x1402`). Other Wooting boards stay read-only, even though the protocol is probably shared. In the same way, `lightingEditor` and `deviceSettingsEditor` exist only for `RAZER_WRITE_VERIFIED_PRODUCT_IDS` (the wired BlackWidow V3 Mini, `0x0258`).
 
 ## Device sources
 
-`main.ts` gives `KeyboardConnection` the browser's `navigator.hid`. The connection only relies on the part of the `HID` and `HIDDevice` interfaces that the drivers use, so the OpenKeyboard desktop app reuses these modules with its own native HID implementation in place of WebHID.
+`main.tsx` gives `KeyboardConnection` the browser's `navigator.hid`. The connection only relies on the part of the `HID` and `HIDDevice` interfaces that the drivers use, so the [OpenKeyboard desktop app](../../openkeyboard-desktop) reuses these modules with its own native HID implementation in place of WebHID. It also reuses `tests/fakes` in its own tests.
 
 If no granted device is supported, `KeyboardConnection` asks each driver's optional `explainUnusableInterface` and shows the first explanation as a failed connection. The Razer driver uses it when the browser shared only the media key or LampArray interfaces of a BlackWidow V3 Mini.
 
@@ -133,12 +133,15 @@ The UI only builds a `ProfileSettingsChange` with the fields the user actually c
 
 ## UI
 
-- **Connection card:** `connection-view.ts` renders the card for the current state and creates panels for the session's capabilities. Panels implement `Panel { element; dispose() }` and are disposed when the state changes.
-- **`ProfilePanel`:** shows a tab per stored profile, the selected profile's details, and an **Edit settings** form (`ProfileSettingsForm`). The form contains a `KeySettingsSection` with one row per key that has its own settings.
-- **`LiveKeyPanel`:** subscribes to the analog stream. It keeps only the latest snapshot and renders once per animation frame, because the keyboard can send several hundred reports per second.
-- **`LightingPanel`:** shows brightness, the effect and its colors, and a **Change lighting** form (`LightingForm`). The form swaps its effect controls (`lighting-effect-options.ts`) when another effect is chosen.
-- **`DeviceSettingsPanel`:** shows battery, polling rate and sleep timer, and a **Change settings** form (`DeviceSettingsForm`).
-- **`KeymapPanel`:** draws the VIA or Vial keymap on the KLE layout with one tab per layer. It offers a file picker when a plain VIA keyboard needs its definition.
+The UI lives in `src/app/` and uses React with Tailwind CSS v4. It only presents what the drivers offer; it adds no keyboard logic of its own.
+
+- **`App`:** subscribes to `KeyboardConnection` (`useConnectionState`). While no keyboard is connected it shows `ConnectionScreen` for the current state; once connected it shows `AppShell`.
+- **`AppShell` and `Sidebar`:** the sidebar shows the connected keyboard and one section per capability (`sectionsFor` in `layout/sections.ts`), in a fixed order: Profiles, Keymap, Lighting, Battery and performance, Live key input, then Device. The first section is selected when a keyboard connects. On narrow windows the sidebar becomes a top bar with horizontally scrolling sections.
+- **Pages:** `ProfilesPage`, `KeymapPage`, `LightingPage`, `DeviceSettingsPage`, `LiveKeysPage` and `DevicePage` (identity, **Disconnect**, **Forget device**). Each read page has **Refresh**, and each editor has a form with **Save to keyboard** and **Cancel**.
+- **Pure helpers:** the form logic lives in plain modules that are unit tested: `profile-draft.ts` (profile and per-key changes), `effect-draft.ts` (lighting effects) and `device-settings-draft.ts`.
+- **Live key input:** `LiveKeysPage` keeps only the latest analog snapshot and renders once per animation frame, because the keyboard can send several hundred reports per second.
+- **Themes:** `System`, `Light` and `Dark` in the sidebar or on the connection screen. The choice is stored in `localStorage` (`openkeyboard.theme`); `System` follows `prefers-color-scheme`. Colors are CSS variables in `app/styles.css` that the `dark` class switches.
+- **Branding:** `App` takes an `AppBranding` (tagline and footnote), so the desktop app can describe itself without changing the shared UI.
 - **Display:** millimeters are rounded to 0.05 mm and shown with two decimals, as Wootility shows them.
 
 All user-facing text is en-US.
@@ -148,6 +151,8 @@ All user-facing text is en-US.
 ```
 npm run check    # tsc --noEmit, vitest run, vite build
 ```
+
+`vite.config.ts` holds the React and Tailwind plugins; `vitest.config.ts` holds the test settings, because Vitest 2 ships its own Vite types.
 
 - **Fixtures come from hardware:** `tests/fakes/wooting-80he-captures.ts` holds replies and writes captured from the 80HE and from Wootility. Encoder tests assert byte-exact equality with what Wootility sent, so an encoding change cannot silently diverge from the vendor tool.
 - **Razer fixtures:** `tests/fakes/razer-blackwidow-v3-mini-captures.ts` holds 90-byte replies captured from the BlackWidow V3 Mini and the effect arguments that were written and read back. Codec tests check both directions against them.
