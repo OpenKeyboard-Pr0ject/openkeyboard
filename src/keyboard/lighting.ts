@@ -56,12 +56,19 @@ export interface KeyboardLightingReader {
   readLighting(): Promise<LightingState>;
 }
 
+export interface LightingPreview {
+  show(change: LightingChange): Promise<void>;
+  save(change: LightingChange): Promise<LightingState>;
+  discard(): Promise<void>;
+}
+
 export interface KeyboardLightingEditor {
   readonly supportedEffects: readonly WritableLightingEffectKind[];
   readonly maximumEffectColors: number;
   readonly supportsKeyColors: boolean;
   readonly layeredEffectCatalog?: LayeredEffectCatalog;
   updateLighting(change: LightingChange): Promise<LightingState>;
+  beginPreview?(): Promise<LightingPreview>;
 }
 
 export const BRIGHTNESS_PERCENT_RANGE = { min: 0, max: 100, step: 1 } as const;

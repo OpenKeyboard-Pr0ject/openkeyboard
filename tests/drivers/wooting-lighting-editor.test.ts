@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  ActiveProfileChangedDuringLightingWriteError,
+  LightingPreviewEndedError,
   LightingWriteNotVerifiedError,
   UnexpectedRgbRowsError,
   WootingLightingEditor,
@@ -58,6 +60,7 @@ class FakeRgbKeyboard {
   readonly preview = new Map<RgbPartName, Uint8Array>(this.flash);
   readonly events: string[] = [];
   readonly device: FakeHidDevice;
+  activeSlot = TYPING_SLOT;
   private previewPending = false;
 
   constructor(private readonly keepsSaves = true, private readonly garblesLowerRowsOnSave = false) {
@@ -73,9 +76,10 @@ class FakeRgbKeyboard {
 
   private answer(command: Uint8Array): Uint8Array {
     const [, , id, slot] = command;
-    if (id === WootingCommand.getCurrentProfileIndex) return replyCarrying(id, payloadOf(`0${TYPING_SLOT}00`));
+    if (id === WootingCommand.getCurrentProfileIndex) return replyCarrying(id, payloadOf(`0${this.activeSlot}00`));
     if (id === WootingCommand.getProfileMetadata) return replyCarrying(id, typingProfileMetadataPayload);
     if (id === WootingCommand.saveRgbProfile) {
+      this.events.push(`save ${slot}`);
       this.previewPending = false;
       if (slot === TYPING_SLOT && this.keepsSaves) {
         this.preview.forEach((payload, part) => this.flash.set(part, payload));
@@ -97,9 +101,24 @@ class FakeRgbKeyboard {
 }
 
 function editorFor(keyboard: FakeRgbKeyboard): WootingLightingEditor {
-  const commands = new WootingCommandChannel(keyboard.device.asHidDevice());
-  return new WootingLightingEditor(commands, new WootingLightingReader(commands));
+  return editorAndReaderFor(keyboard).editor;
 }
+
+function editorAndReaderFor(keyboard: FakeRgbKeyboard) {
+  const commands = new WootingCommandChannel(keyboard.device.asHidDevice());
+  const reader = new WootingLightingReader(commands);
+  return { editor: new WootingLightingEditor(commands, reader), reader };
+}
+
+function sentReportTypes(keyboard: FakeRgbKeyboard): number[] {
+  return keyboard.device.sentOutputReports.map(({ data }) => data[2]);
+}
+
+function sentSaves(keyboard: FakeRgbKeyboard): number {
+  return keyboard.device.sentFeatureReports.filter(({ data }) => data[2] === WootingCommand.saveRgbProfile).length;
+}
+
+const BLUE_ON_ROW_FOUR = [{ matrixRow: 4, matrixColumn: 2, color: { red: 0, green: 0, blue: 255 } }];
 
 function sentReportPrefix(keyboard: FakeRgbKeyboard, index: number, length: number): number[] {
   return [...keyboard.device.sentOutputReports[index].data.subarray(0, length)];
@@ -253,5 +272,168 @@ describe("WootingLightingEditor", () => {
 
     await expect(editorFor(keyboard).updateLighting({ brightnessPercent: 90 }))
       .rejects.toBeInstanceOf(LightingWriteNotVerifiedError);
+  });
+});
+
+describe("WootingLightingEditor live preview", () => {
+  it("shows a change on the keyboard without saving it", async () => {
+    const keyboard = new FakeRgbKeyboard();
+    const preview = await editorFor(keyboard).beginPreview();
+
+    await preview.show({ brightnessPercent: 90 });
+
+    expect(keyboard.device.sentOutputReports.map(({ data }) => [data[2], data[3]])).toEqual([[0x16, PREVIEW_STORAGE]]);
+    expect(sentSaves(keyboard)).toBe(0);
+    expect(keyboard.preview.get("core")![3]).toBe(0xe6);
+    expect(keyboard.flash.get("core")![3]).toBe(0xff);
+  });
+
+  it("reads every part before the first preview and none while previewing", async () => {
+    const keyboard = new FakeRgbKeyboard();
+    const preview = await editorFor(keyboard).beginPreview();
+
+    await preview.show({ brightnessPercent: 90 });
+    await preview.show({ brightnessPercent: 80 });
+
+    expect(keyboard.events).toEqual(["read core", "read upper", "read lower", "write 16", "write 16"]);
+  });
+
+  it("sends only the parts that differ from what the keyboard shows", async () => {
+    const keyboard = new FakeRgbKeyboard();
+    const preview = await editorFor(keyboard).beginPreview();
+
+    await preview.show({ brightnessPercent: 90 });
+    await preview.show({ brightnessPercent: 90 });
+    await preview.show({ brightnessPercent: 90, keyColors: BLUE_ON_ROW_FOUR });
+
+    expect(sentReportTypes(keyboard)).toEqual([0x16, 0x0f]);
+  });
+
+  it("shows the stored lighting again when the change is undone", async () => {
+    const keyboard = new FakeRgbKeyboard();
+    const preview = await editorFor(keyboard).beginPreview();
+
+    await preview.show({ brightnessPercent: 90 });
+    await preview.show({});
+
+    expect([...keyboard.preview.get("core")!]).toEqual([...typingRgbCorePayload]);
+  });
+
+  it("shows effects with the bytes Wootility previewed", async () => {
+    const keyboard = new FakeRgbKeyboard();
+    const preview = await editorFor(keyboard).beginPreview();
+
+    await preview.show({ layeredEffects: CYCLE_WITH_RT_DISPLAY });
+
+    expect([...keyboard.preview.get("core")!]).toEqual([...WOOTILITY_CYCLE_WITH_RT_DISPLAY_CORE]);
+  });
+
+  it("reads the stored lighting while a preview is pending instead of the garbled rows", async () => {
+    const keyboard = new FakeRgbKeyboard();
+    const { editor, reader } = editorAndReaderFor(keyboard);
+    const preview = await editor.beginPreview();
+    await preview.show({ keyColors: BLUE_ON_ROW_FOUR });
+
+    const lighting = await reader.readLighting();
+
+    expect(lighting.keyColors?.find((key) => key.matrixRow === 4 && key.matrixColumn === 2)?.color)
+      .toEqual({ red: 255, green: 0, blue: 0 });
+    expect(keyboard.events.filter((event) => event.startsWith("read"))).toEqual([
+      "read core",
+      "read upper",
+      "read lower",
+    ]);
+  });
+
+  it("saves the preview with the save sequence of Wootility and checks it", async () => {
+    const keyboard = new FakeRgbKeyboard();
+    const preview = await editorFor(keyboard).beginPreview();
+    await preview.show({ keyColors: BLUE_ON_ROW_FOUR });
+
+    const saved = await preview.save({ keyColors: BLUE_ON_ROW_FOUR });
+
+    expect(keyboard.events.slice(4, 8)).toEqual(["write 16", "write e", "write f", "save 1"]);
+    expect(rgbRowValues(keyboard.flash.get("lower")!)[1][2]).toBe(0x001f);
+    expect([...keyboard.flash.get("upper")!]).toEqual([...tenzRgbRowsPayload]);
+    expect(saved.keyColors?.find((key) => key.matrixRow === 4 && key.matrixColumn === 2)?.color)
+      .toEqual({ red: 0, green: 0, blue: 255 });
+  });
+
+  it("discards by writing the stored lighting back and saving it", async () => {
+    const keyboard = new FakeRgbKeyboard();
+    const { editor, reader } = editorAndReaderFor(keyboard);
+    const preview = await editor.beginPreview();
+    await preview.show({ layeredEffects: CYCLE_WITH_RT_DISPLAY, keyColors: BLUE_ON_ROW_FOUR });
+
+    await preview.discard();
+
+    expect([...keyboard.flash.get("core")!]).toEqual([...typingRgbCorePayload]);
+    expect([...keyboard.flash.get("lower")!]).toEqual([...tenzRgbRowsPayload]);
+    expect([...keyboard.preview.get("lower")!]).toEqual([...tenzRgbRowsPayload]);
+    expect(reader.previewState.isPending(TYPING_SLOT)).toBe(false);
+  });
+
+  it("discards without writing when nothing was previewed", async () => {
+    const keyboard = new FakeRgbKeyboard();
+    const preview = await editorFor(keyboard).beginPreview();
+
+    await preview.discard();
+
+    expect(keyboard.device.sentOutputReports).toHaveLength(0);
+    expect(sentSaves(keyboard)).toBe(0);
+  });
+
+  it("cannot be used after it was saved or discarded", async () => {
+    const keyboard = new FakeRgbKeyboard();
+    const preview = await editorFor(keyboard).beginPreview();
+    await preview.discard();
+
+    await expect(preview.show({ brightnessPercent: 90 })).rejects.toBeInstanceOf(LightingPreviewEndedError);
+  });
+
+  it("continues from the stored bytes when a new preview starts while one is pending", async () => {
+    const keyboard = new FakeRgbKeyboard();
+    const editor = editorFor(keyboard);
+    await (await editor.beginPreview()).show({ keyColors: BLUE_ON_ROW_FOUR });
+
+    await (await editor.beginPreview()).discard();
+
+    const eventsBeforeSave = keyboard.events.slice(0, keyboard.events.indexOf("save 1"));
+    expect(eventsBeforeSave.filter((event) => event.startsWith("read"))).toEqual([
+      "read core",
+      "read upper",
+      "read lower",
+    ]);
+    expect([...keyboard.flash.get("lower")!]).toEqual([...tenzRgbRowsPayload]);
+  });
+
+  it("saves a plain change from the stored bytes while a preview is pending", async () => {
+    const keyboard = new FakeRgbKeyboard();
+    const editor = editorFor(keyboard);
+    await (await editor.beginPreview()).show({ keyColors: BLUE_ON_ROW_FOUR });
+
+    await editor.updateLighting({ brightnessPercent: 80 });
+
+    expect([...keyboard.flash.get("lower")!]).toEqual([...tenzRgbRowsPayload]);
+    expect(keyboard.flash.get("core")![3]).toBe(0xcc);
+  });
+
+  it("refuses to save when the active profile changed during the preview", async () => {
+    const keyboard = new FakeRgbKeyboard();
+    const preview = await editorFor(keyboard).beginPreview();
+    await preview.show({ brightnessPercent: 90 });
+    keyboard.activeSlot = 2;
+
+    await expect(preview.save({ brightnessPercent: 90 }))
+      .rejects.toBeInstanceOf(ActiveProfileChangedDuringLightingWriteError);
+    expect(sentSaves(keyboard)).toBe(0);
+  });
+
+  it("refuses invalid changes before showing them", async () => {
+    const keyboard = new FakeRgbKeyboard();
+    const preview = await editorFor(keyboard).beginPreview();
+
+    await expect(preview.show({ brightnessPercent: 101 })).rejects.toThrow();
+    expect(keyboard.device.sentOutputReports).toHaveLength(0);
   });
 });

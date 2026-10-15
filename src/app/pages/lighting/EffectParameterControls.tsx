@@ -55,8 +55,9 @@ function ParameterControl({ parameter, value, disabled, onChange }: ParameterCon
             label={parameter.label}
             value={value as number}
             range={{ min: parameter.min, max: parameter.max, step: 1 }}
-            valueLabel={displayedParameterValue(parameter, value as number)}
+            valueLabel={(shown) => displayedParameterValue(parameter, shown)}
             disabled={disabled}
+            commitOnRelease
             onChange={onChange}
           />
         </div>
@@ -83,6 +84,7 @@ function ParameterControl({ parameter, value, disabled, onChange }: ParameterCon
             label={parameter.label}
             value={colorToHex(value as RgbColor)}
             disabled={disabled}
+            commitOnRelease
             onChange={(hex) => onChange(colorFromHex(hex))}
           />
         </div>

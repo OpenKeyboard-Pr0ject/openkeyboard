@@ -90,8 +90,9 @@ export function EffectsPanel({ catalog, draft, selection, disabled, onSelect, on
             label="Global brightness"
             value={draft.brightnessPercent}
             range={BRIGHTNESS_PERCENT_RANGE}
-            valueLabel={`${draft.brightnessPercent} %`}
+            valueLabel={(percent) => `${percent} %`}
             disabled={disabled}
+            commitOnRelease
             onChange={(percent) => onEdit((current) => withBrightness(current, percent))}
           />
         </div>

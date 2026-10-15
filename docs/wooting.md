@@ -305,6 +305,17 @@ feature    D1 DA 08 01                                                          
 
 `WootingLightingEditor` reads `0x32`, `0x23` and `0x24` once, before any write, and refuses rows that are not 3 rows of 21 colors. It then sends the same four messages as Wootility, changing only brightness (field 1.1), the effects (field 4) and the colors of the keys that changed, and reads all three parts back to compare them by meaning. Its tests replay the captured bytes exactly and model the garbled reads. See [reverse-engineering.md](reverse-engineering.md#wooting-rgb) for what happened on hardware.
 
+### Live preview
+
+Wootility shows every change on the keyboard before it is saved: releasing a slider or picking an option sends only the changed part with storage `00`, and nothing else. OpenKeyboard does the same through `KeyboardLightingEditor.beginPreview()`:
+
+1. **Read first:** the preview reads the active slot, `0x32`, `0x23` and `0x24` once, before its first report.
+2. **Show:** each change sends the parts whose bytes differ from what the keyboard shows now, as `0x16`, `0x0E` or `0x0F` with storage `00`. No `08`.
+3. **Save:** sends all three parts and `08 <slot>`, as Wootility's save does, then reads back and compares by meaning. It refuses if the active profile changed.
+4. **Discard:** sends the bytes read in step 1 and `08 <slot>`. This rewrites the profile with what it already held, the same way the Wootility sessions were ended (experiments 16 and 17).
+
+While a preview is pending, `0x23` and `0x24` reads come back garbled, so `WootingRgbPreviewState` keeps the bytes from step 1. The reader and the editor use them for the previewed slot instead of reading the keyboard. Leaving RGB Settings discards the preview; closing the tab asks the browser to confirm, because a pending preview cannot be ended once the page is gone.
+
 ## Other payloads
 
 | Read | Payload | Interpretation |

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 const CONTROL_CLASSES = [
   "h-10 rounded-md border border-line bg-sunken px-3 text-base text-strong",
@@ -118,10 +118,20 @@ interface RangeInputProps {
   readonly onChange: (value: number) => void;
   readonly disabled?: boolean;
   readonly label: string;
-  readonly valueLabel: string;
+  readonly valueLabel: string | ((value: number) => string);
+  readonly commitOnRelease?: boolean;
 }
 
-export function RangeInput({ value, range, onChange, disabled, label, valueLabel }: RangeInputProps) {
+export function RangeInput(
+  { value, range, onChange, disabled, label, valueLabel, commitOnRelease = false }: RangeInputProps,
+) {
+  const [draggedValue, setDraggedValue] = useState<number>();
+  const shownValue = draggedValue ?? value;
+  const commitDraggedValue = () => {
+    if (draggedValue === undefined) return;
+    setDraggedValue(undefined);
+    if (draggedValue !== value) onChange(draggedValue);
+  };
   return (
     <span className="flex w-72 max-w-full items-center gap-3">
       <input
@@ -130,13 +140,19 @@ export function RangeInput({ value, range, onChange, disabled, label, valueLabel
         min={range.min}
         max={range.max}
         step={range.step}
-        value={value}
+        value={shownValue}
         disabled={disabled}
         aria-label={label}
-        onChange={(event) => onChange(event.target.valueAsNumber)}
+        onChange={(event) => {
+          if (commitOnRelease) setDraggedValue(event.target.valueAsNumber);
+          else onChange(event.target.valueAsNumber);
+        }}
+        onPointerUp={commitDraggedValue}
+        onKeyUp={commitDraggedValue}
+        onBlur={commitDraggedValue}
       />
       <output className={RANGE_VALUE_CLASSES}>
-        {valueLabel}
+        {typeof valueLabel === "function" ? valueLabel(shownValue) : valueLabel}
       </output>
     </span>
   );
@@ -147,17 +163,38 @@ interface ColorInputProps {
   readonly onChange: (value: string) => void;
   readonly disabled?: boolean;
   readonly label: string;
+  readonly commitOnRelease?: boolean;
 }
 
-export function ColorInput({ value, onChange, disabled, label }: ColorInputProps) {
+export function ColorInput({ value, onChange, disabled, label, commitOnRelease = false }: ColorInputProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [pickedValue, setPickedValue] = useState<string>();
+  const latestOnChange = useRef(onChange);
+  latestOnChange.current = onChange;
+
+  useEffect(() => {
+    const input = inputRef.current;
+    if (!commitOnRelease || !input) return undefined;
+    const commitPickedValue = () => {
+      setPickedValue(undefined);
+      latestOnChange.current(input.value);
+    };
+    input.addEventListener("change", commitPickedValue);
+    return () => input.removeEventListener("change", commitPickedValue);
+  }, [commitOnRelease]);
+
   return (
     <input
+      ref={inputRef}
       type="color"
       className="h-10 w-14 cursor-pointer rounded-md border border-line bg-sunken p-1 disabled:cursor-not-allowed"
-      value={value}
+      value={pickedValue ?? value}
       disabled={disabled}
       aria-label={label}
-      onChange={(event) => onChange(event.target.value)}
+      onChange={(event) => {
+        if (commitOnRelease) setPickedValue(event.target.value);
+        else onChange(event.target.value);
+      }}
     />
   );
 }
