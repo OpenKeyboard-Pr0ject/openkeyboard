@@ -24,10 +24,17 @@ describe("smallestOutputReportHolding", () => {
     expect(smallestOutputReportHolding(new FakeHidDevice().asHidDevice(), 40)).toEqual({ reportId: 2, byteLength: 62 });
   });
 
+  it("ignores the constant padding the 80HE declares after the data of every output report", () => {
+    const device = new FakeHidDevice().asHidDevice();
+
+    expect(smallestOutputReportHolding(device, 31)).toEqual({ reportId: 1, byteLength: 32 });
+    expect(smallestOutputReportHolding(device, 207)).toEqual({ reportId: 3, byteLength: 254 });
+  });
+
   it("rejects data larger than every declared output report", () => {
     const device = new FakeHidDevice().asHidDevice();
 
-    expect(() => smallestOutputReportHolding(device, 300)).toThrow(NoFittingOutputReportError);
+    expect(() => smallestOutputReportHolding(device, 3000)).toThrow(NoFittingOutputReportError);
   });
 });
 

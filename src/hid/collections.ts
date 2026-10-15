@@ -32,7 +32,7 @@ export function featureReportByteLength(device: HIDDevice, reportId: number): nu
 export function smallestOutputReportHolding(device: HIDDevice, byteLength: number): DeclaredReport {
   const fitting = flattenCollections(device.collections)
     .flatMap((collection) => collection.outputReports ?? [])
-    .map((report) => ({ reportId: report.reportId ?? 0, byteLength: reportByteLength(report) }))
+    .map((report) => ({ reportId: report.reportId ?? 0, byteLength: reportDataByteLength(report) }))
     .filter((report) => report.byteLength >= byteLength)
     .sort((first, second) => first.byteLength - second.byteLength);
   if (fitting.length === 0) throw new NoFittingOutputReportError(byteLength);
@@ -40,9 +40,14 @@ export function smallestOutputReportHolding(device: HIDDevice, byteLength: numbe
 }
 
 function reportByteLength(report: HIDReportInfo): number {
-  const bitLength = (report.items ?? []).reduce(
-    (total, item) => total + (item.reportSize ?? 0) * (item.reportCount ?? 0),
-    0,
-  );
+  return byteLengthOf(report.items ?? []);
+}
+
+function reportDataByteLength(report: HIDReportInfo): number {
+  return byteLengthOf((report.items ?? []).filter((item) => !item.isConstant));
+}
+
+function byteLengthOf(items: readonly HIDReportItem[]): number {
+  const bitLength = items.reduce((total, item) => total + (item.reportSize ?? 0) * (item.reportCount ?? 0), 0);
   return Math.ceil(bitLength / BITS_PER_BYTE);
 }

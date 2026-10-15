@@ -20,10 +20,22 @@ export interface FakeHidDeviceOptions {
 
 const COMMAND_REPORT_ID = 1;
 const COMMAND_REPORT_BYTES = 7;
+const WOOTING_80HE_OUTPUT_REPORT_BYTES = 2046;
 const STATE_CHANGE_IN_PROGRESS = "An operation that changes the device state is in progress.";
 
 function byteReport(reportId: number, byteCount: number): HIDReportInfo {
   return { reportId, items: [{ reportSize: 8, reportCount: byteCount }] };
+}
+
+function paddedOutputReport(reportId: number, dataBytes: number): HIDReportInfo {
+  const paddingBits = (WOOTING_80HE_OUTPUT_REPORT_BYTES - dataBytes) * 8;
+  return {
+    reportId,
+    items: [
+      { reportSize: 8, reportCount: dataBytes, isConstant: false },
+      ...(paddingBits > 0 ? [{ reportSize: paddingBits, reportCount: 1, isConstant: true }] : []),
+    ],
+  };
 }
 
 export const wootingConfigCollection: HIDCollectionInfo = {
@@ -31,7 +43,14 @@ export const wootingConfigCollection: HIDCollectionInfo = {
   usage: WOOTING_CONFIG_USAGE,
   children: [],
   inputReports: [],
-  outputReports: [byteReport(3, 254), byteReport(1, 32), byteReport(2, 62)],
+  outputReports: [
+    paddedOutputReport(1, 32),
+    paddedOutputReport(2, 62),
+    paddedOutputReport(3, 254),
+    paddedOutputReport(4, 510),
+    paddedOutputReport(5, 1022),
+    paddedOutputReport(6, 2046),
+  ],
   featureReports: [byteReport(COMMAND_REPORT_ID, COMMAND_REPORT_BYTES)],
 };
 
@@ -86,7 +105,16 @@ export class FakeHidDevice {
   async sendReport(reportId: number, data: BufferSource): Promise<void> {
     const bytes = toBytes(data);
     this.sentOutputReports.push({ reportId, data: bytes });
-    this.options.receiveOutputReport?.(reportId, bytes);
+    this.options.receiveOutputReport?.(reportId, bytes.slice(0, this.outputReportDataBytes(reportId) ?? bytes.length));
+  }
+
+  private outputReportDataBytes(reportId: number): number | undefined {
+    const report = this.collections
+      .flatMap((collection) => collection.outputReports ?? [])
+      .find((candidate) => candidate.reportId === reportId);
+    if (!report) return undefined;
+    const dataItems = (report.items ?? []).filter((item) => !item.isConstant);
+    return dataItems.reduce((total, item) => total + ((item.reportSize ?? 0) * (item.reportCount ?? 0)) / 8, 0);
   }
 
   async sendFeatureReport(reportId: number, data: BufferSource): Promise<void> {
