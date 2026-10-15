@@ -144,11 +144,12 @@ describe("WootingLightingEditor", () => {
 
     await editorFor(keyboard).updateLighting({ brightnessPercent: 90 });
 
-    expect(keyboard.device.sentOutputReports.map(({ data }) => [data[2], data[3]])).toEqual([
-      [0x16, 0x00],
-      [0x0e, 0x00],
-      [0x0f, 0x00],
-    ]);
+    expect(keyboard.device.sentOutputReports.map(({ reportId, data }) => [reportId, data.length, data[2], data[3]]))
+      .toEqual([
+        [1, 32, 0x16, 0x00],
+        [3, 254, 0x0e, 0x00],
+        [3, 254, 0x0f, 0x00],
+      ]);
     expect(sentReportPrefix(keyboard, 1, HEADER_BYTES + tenzRgbRowsPayload.length))
       .toEqual([0xd1, 0xda, 0x0e, 0x00, 0xc9, 0x00, ...tenzRgbRowsPayload]);
   });
@@ -168,7 +169,7 @@ describe("WootingLightingEditor", () => {
     expect([...keyboard.flash.get("lower")!]).toEqual([...tenzRgbRowsPayload]);
   });
 
-  it("reads every part before the first preview, because the 80HE garbles rows read during a preview", async () => {
+  it("reads every part before the first preview and writes from those bytes", async () => {
     const keyboard = new FakeRgbKeyboard();
 
     await editorFor(keyboard).updateLighting({ brightnessPercent: 90 });
@@ -328,7 +329,7 @@ describe("WootingLightingEditor live preview", () => {
     expect([...keyboard.preview.get("core")!]).toEqual([...WOOTILITY_CYCLE_WITH_RT_DISPLAY_CORE]);
   });
 
-  it("reads the stored lighting while a preview is pending instead of the garbled rows", async () => {
+  it("reports the saved lighting while a preview is pending, from the bytes read before it", async () => {
     const keyboard = new FakeRgbKeyboard();
     const { editor, reader } = editorAndReaderFor(keyboard);
     const preview = await editor.beginPreview();

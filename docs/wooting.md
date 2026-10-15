@@ -32,6 +32,8 @@ Reference for the Wooting configuration protocol as used by OpenKeyboard. Everyt
 
 On the `0xFF55` collection, the 60HE descriptor published in libwootility declares input and output reports with IDs 1–6 (32, 62, 254, 510, 1022 and 2046 bytes) and feature report 1 (7 bytes). The 80HE behaves the same way. OpenKeyboard reads the sizes from `HIDDevice.collections` rather than hard-coding them.
 
+**Output reports carry constant padding:** on the 80HE every output report is declared as a data item (`8 × 32`, `8 × 62`, `8 × 254` …) followed by a constant item that pads it to 2046 bytes. The keyboard reads only the data item. Choosing a report by its total size therefore picks report 1 for everything, and a 207-byte `0x0E` report sent on report 1 is cut after 32 bytes: the keyboard keeps the header and 7 colors and fills the rest of the declared length from an old buffer. `smallestOutputReportHolding` counts only items that are not constant, so `0x0E` and `0x0F` go out on report 3 (254 bytes), as Wootility sends them.
+
 ## Commands
 
 A command is a **feature report** with ID `0x01`:
@@ -301,7 +303,7 @@ feature    D1 DA 08 01                                                          
 
 - **Save replies:** feature `08 <slot>` answers with status `0x88` and an empty payload, like the read commands.
 - **Effects cover key colors:** on Typing Profile, whose `0x32` field 4 is not empty, the owner set F (row 3, column 4) to white through OpenKeyboard. `0x24` read back `0xFFFF` at that position, but the keyboard kept showing the Wave effect. Field 4 holds the effects, see [Effects](#effects). OpenKeyboard sets `effectHidesKeyColors` and warns on RGB Settings when the base effect is not Static.
-- **Never read RGB during a preview:** after an RGB preview and before `08`, reading `0x23` and `0x24` returned garbled rows. Row 0 kept 7 colors and then held the tail of the `0x37` metadata reply (`80 0c "woot:p:black" 00`), still 21 values long. Writing those rows back stored the damage. Read every part first, as Wootility writes from what it read when it connected.
+- **Damaged rows came from cut reports, not from reading during a preview:** after experiment 13, `0x23` and `0x24` returned rows whose row 0 kept 7 colors and then held the tail of the `0x37` metadata reply (`80 0c "woot:p:black" 00`), still 21 values long. This was first blamed on reading during a preview. Experiment 18 produced the same damage with correct bytes, and a replug showed it was stored: the rows had been sent on report 1 and cut after 32 bytes (see [USB interfaces](#usb-interfaces)). OpenKeyboard still reads every part once before writing, as Wootility does.
 
 `WootingLightingEditor` reads `0x32`, `0x23` and `0x24` once, before any write, and refuses rows that are not 3 rows of 21 colors. It then sends the same four messages as Wootility, changing only brightness (field 1.1), the effects (field 4) and the colors of the keys that changed, and reads all three parts back to compare them by meaning. Its tests replay the captured bytes exactly and model the garbled reads. See [reverse-engineering.md](reverse-engineering.md#wooting-rgb) for what happened on hardware.
 
@@ -314,7 +316,7 @@ Wootility shows every change on the keyboard before it is saved: releasing a sli
 3. **Save:** sends all three parts and `08 <slot>`, as Wootility's save does, then reads back and compares by meaning. It refuses if the active profile changed.
 4. **Discard:** sends the bytes read in step 1 and `08 <slot>`. This rewrites the profile with what it already held, the same way the Wootility sessions were ended (experiments 16 and 17).
 
-While a preview is pending, `0x23` and `0x24` reads come back garbled, so `WootingRgbPreviewState` keeps the bytes from step 1. The reader and the editor use them for the previewed slot instead of reading the keyboard. Leaving RGB Settings discards the preview; closing the tab asks the browser to confirm, because a pending preview cannot be ended once the page is gone.
+While a preview is pending, `WootingRgbPreviewState` keeps the bytes from step 1, and the reader and the editor use them for the previewed slot instead of reading the keyboard. This was meant to avoid garbled reads during a preview; experiment 18 showed the garbling was stored damage from cut reports, but keeping the saved bytes is still right, because they are what Save and Discard build on. Leaving RGB Settings discards the preview; closing the tab asks the browser to confirm, because a pending preview cannot be ended once the page is gone.
 
 ## Other payloads
 

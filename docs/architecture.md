@@ -89,7 +89,7 @@ Both protocol families serialize traffic through a promise queue, because a repl
 
 - **`WootingCommandChannel`:**
   - `request(command, parameters)` sends a feature report and waits up to 1 s for an input report whose magic and command byte match.
-  - `writeReport(report)` sends an output report on the smallest declared output report that fits, zero-padded to its declared size.
+  - `writeReport(report)` sends an output report on the smallest declared output report whose data items fit, zero-padded to that size. Constant items are padding and do not count: the 80HE declares every output report padded to 2046 bytes but reads only the data item.
 - **`RazerCommandChannel`:**
   - `request(command, args)` sends a 90-byte feature report without a report ID, then reads the feature report back every 8 ms until the status leaves "new" or "busy" and the reply echoes the command. It gives up after 60 reads.
   - It keeps the last 90 bytes of the reply, so a reply that starts with the report ID byte also works.

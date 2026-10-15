@@ -19,7 +19,8 @@ What is still unknown, what is implemented but untested, and what would come nex
 | Whether other Wooting models (60HE+, Two HE, UwU) share the 80HE layout | Needs those keyboards. The read path already accepts any `0xFF55` Wooting device but marks it unverified |
 | Where Fn Layer 1 key colors are stored | Wootility saves no extra RGB report for them. Change one Fn layer color in Wootility and diff the whole save sequence, especially `0x1B` |
 | Ripple flags bit 1, Breath field 2, Touch fields 3–5, Scan directions 1 and 2 | No Wootility control changes them. OpenKeyboard keeps them as stored |
-| What ends a pending RGB preview besides `08` (replugging, switching profiles) | After a preview, replug the keyboard or switch profiles, then read `0x23` and see whether the rows are still garbled |
+| What ends a pending RGB preview besides `08` (replugging, switching profiles) | Replugging restarts the keyboard on TenZ Profile (experiment 18). Preview one change, close the tab, replug, and see what the keyboard shows |
+| Whether writes before the report fix lost data | Every write went out on report 1 until experiment 19, so anything after byte 32 was cut. All 43 structures match the baseline now, and the profile writes verified on hardware were short, but a per-key write covering many keys may have been cut. Re-test per-key actuation for many keys |
 | `0x32` fields 1.2 and 1.3 (`0xFFFF`) | Look for a Wootility setting that changes them |
 | Whether per-key settings for the Spacebar need all three matrix positions (row 5, columns 4, 6, 8) | Set a per-key actuation on the Spacebar in Wootility and read `0x31`. OpenKeyboard edits column 6, the position the analog stream reports |
 | Split press and release sensitivity | Wootility offers "Split sensitivity" on the Rapid Trigger page. OpenKeyboard does not offer it until its format is captured |
@@ -42,7 +43,7 @@ What is still unknown, what is implemented but untested, and what would come nex
 - **Razer HyperSpeed receiver:** reads go through it, but the keyboard was on the cable, so every reply said "no response".
 - **Razer in Chrome:** Chrome on Windows does not offer the control interface to web pages (see [razer.md](razer.md#chrome-on-windows)), so the browser app cannot change the keyboard there. Chrome on Linux and macOS has not been tried.
 - **Linux:** udev rules for `hidraw` access have not been written or tested.
-- **Wooting live preview:** tested against a fake keyboard that garbles row reads during a preview, as the 80HE does. Not yet run on hardware. Check that a preview shows at once, that Discard leaves all 43 structures as they were, and what the keyboard shows if the page closes during a preview.
+- **Wooting live preview:** previews showed at once on the 80HE (experiment 18). Discard failed there because of the report bug, which is fixed and verified for Save in experiment 19. Run Discard once more on hardware and compare all 43 structures.
 - **Wooting effects written by OpenKeyboard:** the codec rebuilds every Wootility preview byte for byte, but OpenKeyboard has not saved an effect on the keyboard yet. Do the first save with the owner watching and re-read all 43 structures afterwards.
 - **Wooting models other than the 80HE:** reads are shown as "Not yet verified on hardware", and editing is disabled.
 
