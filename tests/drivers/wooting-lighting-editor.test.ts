@@ -6,9 +6,11 @@ import {
 } from "../../src/drivers/wooting/wooting-lighting-editor";
 import { WootingLightingReader } from "../../src/drivers/wooting/wooting-lighting-reader";
 import { InvalidKeyColorError, UnsupportedLightingEffectError } from "../../src/keyboard/lighting";
+import { InvalidLayeredEffectsError, type LayeredEffects } from "../../src/keyboard/lighting-effects";
 import { WootingCommandChannel } from "../../src/protocol/wooting/wooting-command-channel";
 import { WootingCommand } from "../../src/protocol/wooting/wooting-constants";
 import { rgbRowValues } from "../../src/protocol/wooting/wooting-rgb-codec";
+import { decodeRgbEffects, wootingEffectDefaults } from "../../src/protocol/wooting/wooting-rgb-effects-codec";
 import { FakeHidDevice } from "../fakes/fake-hid-device";
 import {
   emptyPayload,
@@ -25,6 +27,13 @@ import {
 const TYPING_SLOT = 1;
 const HEADER_BYTES = 6;
 const PREVIEW_STORAGE = 0x00;
+const WOOTILITY_CYCLE_WITH_RT_DISPLAY_CORE = payloadOf("0a0b08ff0110ffff0318ffff0322"
+  + "0f0a062204080010300a055a03088c01");
+
+const CYCLE_WITH_RT_DISPLAY: LayeredEffects = {
+  base: { effectId: "cycle", values: wootingEffectDefaults("cycle") },
+  effectLayers: [{ effectId: "rt-display", values: wootingEffectDefaults("rt-display") }],
+};
 
 type RgbPartName = "core" | "upper" | "lower";
 
@@ -175,7 +184,48 @@ describe("WootingLightingEditor", () => {
     expect(keyboard.device.sentOutputReports).toHaveLength(0);
   });
 
-  it("refuses lighting effects, which are not decoded yet", async () => {
+  it("writes a base effect and an effect layer with the bytes Wootility previewed", async () => {
+    const keyboard = new FakeRgbKeyboard();
+
+    const lighting = await editorFor(keyboard).updateLighting({ layeredEffects: CYCLE_WITH_RT_DISPLAY });
+
+    const header = [0xd1, 0xda, 0x16, PREVIEW_STORAGE, WOOTILITY_CYCLE_WITH_RT_DISPLAY_CORE.length, 0x00];
+    expect(sentReportPrefix(keyboard, 0, HEADER_BYTES + WOOTILITY_CYCLE_WITH_RT_DISPLAY_CORE.length))
+      .toEqual([...header, ...WOOTILITY_CYCLE_WITH_RT_DISPLAY_CORE]);
+    expect(decodeRgbEffects(keyboard.flash.get("core")!)).toEqual(CYCLE_WITH_RT_DISPLAY);
+    expect(lighting.layeredEffects).toEqual(CYCLE_WITH_RT_DISPLAY);
+  });
+
+  it("changes brightness and effects in one core report", async () => {
+    const keyboard = new FakeRgbKeyboard();
+
+    await editorFor(keyboard).updateLighting({ brightnessPercent: 90, layeredEffects: CYCLE_WITH_RT_DISPLAY });
+
+    const core = keyboard.flash.get("core")!;
+    expect(core[3]).toBe(0xe6);
+    expect(decodeRgbEffects(core)).toEqual(CYCLE_WITH_RT_DISPLAY);
+  });
+
+  it("refuses effect values outside the ranges Wootility allows", async () => {
+    const keyboard = new FakeRgbKeyboard();
+    const tooFast = { base: { effectId: "wave", values: { look: 0, speed: 61, direction: 0 } }, effectLayers: [] };
+
+    await expect(editorFor(keyboard).updateLighting({ layeredEffects: tooFast }))
+      .rejects.toBeInstanceOf(InvalidLayeredEffectsError);
+    expect(keyboard.device.sentOutputReports).toHaveLength(0);
+  });
+
+  it("refuses more effect layers than the keyboard holds", async () => {
+    const keyboard = new FakeRgbKeyboard();
+    const rtDisplay = CYCLE_WITH_RT_DISPLAY.effectLayers[0];
+    const fourLayers = { ...CYCLE_WITH_RT_DISPLAY, effectLayers: [rtDisplay, rtDisplay, rtDisplay, rtDisplay] };
+
+    await expect(editorFor(keyboard).updateLighting({ layeredEffects: fourLayers }))
+      .rejects.toBeInstanceOf(InvalidLayeredEffectsError);
+    expect(keyboard.device.sentOutputReports).toHaveLength(0);
+  });
+
+  it("refuses single lighting effects, which Wooting keyboards do not use", async () => {
     const keyboard = new FakeRgbKeyboard();
 
     await expect(editorFor(keyboard).updateLighting({ effect: { kind: "spectrum" } }))

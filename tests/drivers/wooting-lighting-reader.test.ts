@@ -6,10 +6,12 @@ import { FakeHidDevice } from "../fakes/fake-hid-device";
 import {
   currentProfileIndexPayload,
   emptyPayload,
+  payloadOf,
   profileMetadataPayload,
   replyCarrying,
   tenzRgbCorePayload,
   tenzRgbRowsPayload,
+  typingRgbCorePayload,
 } from "../fakes/wooting-80he-captures";
 
 const PROFILE_SLOT_PARAMETER_INDEX = 3;
@@ -22,12 +24,13 @@ const TENZ_PROFILE_PAYLOADS: ReadonlyMap<number, Uint8Array> = new Map([
   [WootingCommand.getRgbLowerRows, tenzRgbRowsPayload],
 ]);
 
-function readerWithRequests() {
+function readerWithRequests(corePayload = tenzRgbCorePayload) {
   const requests: Array<readonly [number, number]> = [];
+  const payloads = new Map(TENZ_PROFILE_PAYLOADS).set(WootingCommand.getRgbCore, corePayload);
   const keyboard = new FakeHidDevice({
     respond: (_reportId, data) => {
       requests.push([data[2], data[PROFILE_SLOT_PARAMETER_INDEX]]);
-      return replyCarrying(data[2], TENZ_PROFILE_PAYLOADS.get(data[2]) ?? emptyPayload);
+      return replyCarrying(data[2], payloads.get(data[2]) ?? emptyPayload);
     },
   });
   return { reader: new WootingLightingReader(new WootingCommandChannel(keyboard.asHidDevice())), requests };
@@ -41,10 +44,33 @@ describe("WootingLightingReader", () => {
 
     expect(lighting.brightnessPercent).toBe(70);
     expect(lighting.effect).toEqual({ kind: "per-key" });
+    expect(lighting.effectHidesKeyColors).toBe(false);
     expect(lighting.profileName).toBe("TenZ Profile");
     expect(lighting.keyColors).toHaveLength(126);
     expect(lighting.keyColors?.find((key) => key.matrixRow === 5 && key.matrixColumn === 20)?.color)
       .toEqual({ red: 255, green: 239, blue: 0 });
+  });
+
+  it("warns that an animated base effect covers the key colors", async () => {
+    const { reader } = readerWithRequests(typingRgbCorePayload);
+
+    const lighting = await reader.readLighting();
+
+    expect(lighting.effectHidesKeyColors).toBe(true);
+    expect(lighting.effect).toEqual({ kind: "layered", description: "Wave" });
+    expect(lighting.layeredEffects).toEqual({
+      base: { effectId: "wave", values: { look: 0, speed: 16, direction: 0 } },
+      effectLayers: [],
+    });
+  });
+
+  it("shows key colors under effect layers when the base effect is Static", async () => {
+    const { reader } = readerWithRequests(payloadOf("0a0b08ff0110ffff0318ffff0322070a055a03088c01"));
+
+    const lighting = await reader.readLighting();
+
+    expect(lighting.effectHidesKeyColors).toBe(false);
+    expect(lighting.effect).toEqual({ kind: "layered", description: "Static with RT display" });
   });
 
   it("sends only read commands, each for the active slot", async () => {

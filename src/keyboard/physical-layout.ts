@@ -21,8 +21,15 @@ export interface LayoutSize {
   readonly height: number;
 }
 
+const MATRIX_KEY_ID_SEPARATOR = ":";
+
 export function matrixKeyId(position: MatrixPosition): string {
-  return `${position.matrixRow}:${position.matrixColumn}`;
+  return `${position.matrixRow}${MATRIX_KEY_ID_SEPARATOR}${position.matrixColumn}`;
+}
+
+export function matrixPositionFromKeyId(keyId: string): MatrixPosition {
+  const [matrixRow, matrixColumn] = keyId.split(MATRIX_KEY_ID_SEPARATOR).map(Number);
+  return { matrixRow, matrixColumn };
 }
 
 export function layoutSize(layout: PhysicalLayout): LayoutSize {

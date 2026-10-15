@@ -1,3 +1,4 @@
+import type { LayeredEffectCatalog, LayeredEffects } from "./lighting-effects";
 import type { MatrixPosition } from "./physical-layout";
 
 export interface RgbColor {
@@ -19,11 +20,15 @@ export type LightingEffect =
   | { readonly kind: "reactive"; readonly color: RgbColor; readonly duration: EffectDuration }
   | { readonly kind: "starlight"; readonly colors: readonly RgbColor[]; readonly duration: EffectDuration }
   | { readonly kind: "per-key" }
+  | { readonly kind: "layered"; readonly description: string }
   | { readonly kind: "unrecognized"; readonly description: string };
 
 export type LightingEffectKind = LightingEffect["kind"];
 
-export type WritableLightingEffect = Exclude<LightingEffect, { kind: "unrecognized" } | { kind: "per-key" }>;
+export type WritableLightingEffect = Exclude<
+  LightingEffect,
+  { kind: "unrecognized" } | { kind: "per-key" } | { kind: "layered" }
+>;
 
 export type WritableLightingEffectKind = WritableLightingEffect["kind"];
 
@@ -35,6 +40,8 @@ export interface LightingState {
   readonly brightnessPercent: number;
   readonly effect: LightingEffect;
   readonly keyColors?: readonly KeyColor[];
+  readonly effectHidesKeyColors?: boolean;
+  readonly layeredEffects?: LayeredEffects;
   readonly profileName?: string;
 }
 
@@ -42,6 +49,7 @@ export interface LightingChange {
   readonly brightnessPercent?: number;
   readonly effect?: WritableLightingEffect;
   readonly keyColors?: readonly KeyColor[];
+  readonly layeredEffects?: LayeredEffects;
 }
 
 export interface KeyboardLightingReader {
@@ -52,6 +60,7 @@ export interface KeyboardLightingEditor {
   readonly supportedEffects: readonly WritableLightingEffectKind[];
   readonly maximumEffectColors: number;
   readonly supportsKeyColors: boolean;
+  readonly layeredEffectCatalog?: LayeredEffectCatalog;
   updateLighting(change: LightingChange): Promise<LightingState>;
 }
 

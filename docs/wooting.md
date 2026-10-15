@@ -243,9 +243,43 @@ Slots 0-2 of the user's 80HE all held the same left-to-right gradient: columns 0
 |---|---|---|---|---|
 | 1.1 | `179` | `255` | `112` | Brightness out of 255. Wootility showed 100 % for Typing Profile |
 | 1.2, 1.3 | `0xFFFF` | `0xFFFF` | `0xFFFF` | Unknown |
-| 4 | empty | `0a 08 0a 06 08 00 10 10 18 00` | absent | Effect layers. Only Typing Profile runs an animated effect (Wave) in Wootility. Hypothesis |
+| 4 | empty | `0a 08 0a 06 08 00 10 10 18 00` | absent | Effects: a base effect and up to three Fx layers, see [Effects](#effects). Typing Profile runs Wave |
 
-OpenKeyboard shows brightness as field 1.1 / 255 in whole percent, the key colors on the keyboard drawing, and "an animated effect, not decoded yet" when field 4 is not empty.
+OpenKeyboard shows brightness as field 1.1 / 255 in whole percent, the key colors on the keyboard drawing, and the decoded effects.
+
+### Effects
+
+Captured from Wootility Web 5.4.2 on 2026-10-16 by changing one thing at a time in preview and logging the `0x16` report each change sent (experiments 16 and 17 in [reverse-engineering.md](reverse-engineering.md#wooting-rgb)).
+
+Core field 4 holds repeated field 1 messages, one per layer. Each layer holds exactly one field, and **the field number is the effect**. A layer whose effect is a base effect comes first; Fx layers follow in the order shown in Wootility. **Static is no layer at all**: Static without Fx layers is `22 00` (or field 4 absent, as after a preset), Static with an RT display layer is `22 07 0a 05 5a 03 08 8c 01`. Wootility allows at most three Fx layers and writes every known field, zeros included.
+
+```
+22 0f                     field 4, 15 bytes
+   0a 06 22 04 08 00 10 30      layer: field 4 = Cycle {1: look 0, 2: speed 48}
+   0a 05 5a 03 08 8c 01         layer: field 11 = RT display {1: base brightness 140}
+```
+
+| Field | Effect | Role | Fields inside (Wootility default) | Ranges and display |
+|---|---|---|---|---|
+| 1 | Wave | Base | 1 look (0), 2 speed (16), 3 direction (0) | Look 0 Rainbow, 1 Ocean, 2 Inferno, 3 Spring, 4 Pink!, 5 Blue Spectrum. Speed 4–60, shown as raw × 0.25 s. Direction 0 Right, 1 Left |
+| 4 | Cycle | Base | 1 look (0), 2 speed (48) | Looks as Wave. Speed 4–80, raw × 0.25 s |
+| 14 | Noise | Base | 1 primary color (`0x181F`), 2 secondary color (`0x07E1`), 3 speed (50), 4 scale (25) | Colors in RGB565. Speed 0–255, shown as raw / 255 in %. Scale 0–100 % |
+| 15 | Spiral | Base | 1 primary (`0xF81F`), 2 secondary (`0x07FF`), 3 spin (100), 4 spiral (139) | 3 and 4 are zigzag-signed (sint32): the magnitude 0–127 is the speed, shown as / 127 in %, and a negative value means clockwise. 100 = 50 counter-clockwise, 139 = 70 clockwise |
+| 2 | Scan | Fx | 1 width (1), 2 speed (15), 3 base brightness (30), 4 direction (0) | Width 1–7 keys, speed 1–50 keys/s, brightness 0–255 shown as / 255 in %. Direction 0 Horizontal, 3 Vertical |
+| 3 | Breath | Fx | 1 speed (15), 3 secondary brightness (0) | Speed 1–40, raw × 0.25 s. Field 2 never appeared |
+| 5 | Ripple | Fx | 1 flags (0), 2 spread speed (20), 3 fade speed (30), 4 base brightness (30) | Flags bit 0 Random Colors, bit 2 Inverted. Spread 1–50 keys/s. Fade 1–253, raw × 0.015 s |
+| 6 | Trail | Fx | 1 base brightness (30), 2 speed (4), 3 mode (0), 4 custom color (`0xFFFF`) | Mode bits 0–1: 0 Base Layer, 1 Random Colors, 2 Single Color (shows field 4); bit 2: Inverted fade. Speed 1–40, raw × 0.25 s |
+| 7 | Touch | Fx | 1 base brightness (30), 2 analog curve (0), 3 (0), 4 (0), 5 (1) | Fields 3–5 have no control in Wootility and are kept as stored |
+| 8 | Jelly | Fx | 1 base brightness (30), 2 analog curve (0) | |
+| 9 | AOE | Fx | 1 base brightness (30), 2 analog curve (0) | |
+| 10 | Mixing | Fx | 1 analog curve (0) | |
+| 11 | RT display | Fx | 1 base brightness (140) | |
+
+- **Presets are key colors:** Wootility's nine presets (Rainbow, Seawave, Inferno, Miami FPS, Summer Breeze, Alternator, Clay, Lekker, Sunset) preview `0x0E` and `0x0F` with fixed 6 × 21 color grids and a core without field 4, so they also set the base effect to Static and remove every Fx layer. The grids are in `wooting-rgb-presets.ts`.
+- **Fn Layer 1** has its own key colors in Wootility, but selecting it sends nothing and saving sends no extra RGB report. Where those colors live is open.
+- **Base effects cover key colors:** Wootility warns about a non-Static base effect. With a Static base, Fx layers draw over the key colors.
+
+`wooting-rgb-effects-codec.ts` decodes field 4 into a base effect and Fx layers, and writes them back by editing the stored layer when its effect is unchanged, so fields without a control keep their values. A new layer starts from Wootility's default bytes. Its tests rebuild every captured preview byte for byte.
 
 ### Writing lighting
 
@@ -266,9 +300,10 @@ feature    D1 DA 08 01                                                          
 - **Nothing else changed:** reading all 43 known structures before and after the save showed one difference, `0x32` slot 1 field 1.1 `ff` → `e6`.
 
 - **Save replies:** feature `08 <slot>` answers with status `0x88` and an empty payload, like the read commands.
+- **Effects cover key colors:** on Typing Profile, whose `0x32` field 4 is not empty, the owner set F (row 3, column 4) to white through OpenKeyboard. `0x24` read back `0xFFFF` at that position, but the keyboard kept showing the Wave effect. Field 4 holds the effects, see [Effects](#effects). OpenKeyboard sets `effectHidesKeyColors` and warns on RGB Settings when the base effect is not Static.
 - **Never read RGB during a preview:** after an RGB preview and before `08`, reading `0x23` and `0x24` returned garbled rows. Row 0 kept 7 colors and then held the tail of the `0x37` metadata reply (`80 0c "woot:p:black" 00`), still 21 values long. Writing those rows back stored the damage. Read every part first, as Wootility writes from what it read when it connected.
 
-`WootingLightingEditor` reads `0x32`, `0x23` and `0x24` once, before any write, and refuses rows that are not 3 rows of 21 colors. It then sends the same four messages as Wootility, changing only brightness (field 1.1) and the colors of the keys that changed, and reads all three parts back to compare them by meaning. Its tests replay the captured bytes exactly and model the garbled reads. See [reverse-engineering.md](reverse-engineering.md#wooting-rgb) for what happened on hardware.
+`WootingLightingEditor` reads `0x32`, `0x23` and `0x24` once, before any write, and refuses rows that are not 3 rows of 21 colors. It then sends the same four messages as Wootility, changing only brightness (field 1.1), the effects (field 4) and the colors of the keys that changed, and reads all three parts back to compare them by meaning. Its tests replay the captured bytes exactly and model the garbled reads. See [reverse-engineering.md](reverse-engineering.md#wooting-rgb) for what happened on hardware.
 
 ## Other payloads
 

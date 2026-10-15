@@ -9,6 +9,7 @@ export const EFFECT_LABELS: Readonly<Record<LightingEffectKind, string>> = {
   starlight: "Starlight",
   off: "Off",
   "per-key": "Per-key colors",
+  layered: "Layered effects",
   unrecognized: "Other effect",
 };
 
@@ -36,6 +37,8 @@ export function describeEffect(effect: LightingEffect): string {
       return `${EFFECT_LABELS.breathing}, ${colorCountLabel(effect.colors.length)}`;
     case "unrecognized":
       return `${EFFECT_LABELS.unrecognized} (${effect.description})`;
+    case "layered":
+      return effect.description;
     default:
       return EFFECT_LABELS[effect.kind];
   }

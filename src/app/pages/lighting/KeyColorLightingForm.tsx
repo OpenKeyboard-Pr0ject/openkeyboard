@@ -91,7 +91,7 @@ export function KeyColorLightingForm(
         onClear={() => setSelectedIds(new Set())}
       />
       <div className="grid gap-4 md:grid-cols-2">
-        <Card title="Colours">
+        <Card title="Colors">
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center gap-3">
               <ColorInput

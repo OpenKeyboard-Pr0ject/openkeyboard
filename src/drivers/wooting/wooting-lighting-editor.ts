@@ -7,6 +7,7 @@ import {
   UnsupportedLightingEffectError,
   type WritableLightingEffectKind,
 } from "../../keyboard/lighting";
+import { assertValidLayeredEffects } from "../../keyboard/lighting-effects";
 import { encodeWootingReport } from "../../protocol/wooting/wooting-codec";
 import type { WootingCommandChannel } from "../../protocol/wooting/wooting-command-channel";
 import {
@@ -24,11 +25,13 @@ import {
   withRgbCoreBrightness,
   withRgbRowColors,
 } from "../../protocol/wooting/wooting-rgb-codec";
+import { decodeRgbEffects, withRgbEffects } from "../../protocol/wooting/wooting-rgb-effects-codec";
+import { WOOTING_EFFECT_CATALOG } from "./wooting-effect-catalog";
 import type { WootingLightingReader } from "./wooting-lighting-reader";
 
 const UPPER_ROWS_START = 0;
 const LOWER_ROWS_START = 3;
-const EFFECTS_NOT_DECODED = "Wooting lighting effects are not decoded yet.";
+const SINGLE_EFFECTS_NOT_USED = "Wooting keyboards combine a base effect with effect layers instead.";
 
 interface StoredRgbPart {
   readonly name: string;
@@ -38,10 +41,10 @@ interface StoredRgbPart {
 }
 
 const CORE_PART: StoredRgbPart = {
-  name: "brightness",
+  name: "brightness and effects",
   reportType: WootingReportType.rgbCore,
   readCommand: WootingCommand.getRgbCore,
-  normalize: (payload) => String(rgbCoreBrightnessRaw(payload)),
+  normalize: (payload) => JSON.stringify([rgbCoreBrightnessRaw(payload), decodeRgbEffects(payload)]),
 };
 
 const UPPER_ROWS_PART: StoredRgbPart = {
@@ -90,6 +93,7 @@ export class WootingLightingEditor implements KeyboardLightingEditor {
   readonly supportedEffects: readonly WritableLightingEffectKind[] = [];
   readonly maximumEffectColors = 0;
   readonly supportsKeyColors = true;
+  readonly layeredEffectCatalog = WOOTING_EFFECT_CATALOG;
 
   constructor(
     private readonly commands: WootingCommandChannel,
@@ -97,9 +101,10 @@ export class WootingLightingEditor implements KeyboardLightingEditor {
   ) {}
 
   async updateLighting(change: LightingChange): Promise<LightingState> {
-    if (change.effect) throw new UnsupportedLightingEffectError(change.effect, EFFECTS_NOT_DECODED);
+    if (change.effect) throw new UnsupportedLightingEffectError(change.effect, SINGLE_EFFECTS_NOT_USED);
     if (change.brightnessPercent !== undefined) assertValidBrightness(change.brightnessPercent);
     if (change.keyColors) assertValidKeyColors(change.keyColors);
+    if (change.layeredEffects) assertValidLayeredEffects(this.layeredEffectCatalog, change.layeredEffects);
     const slot = await this.readActiveSlot();
     const stored = await this.readAllParts(slot);
     const planned = plannedPayloads(stored, change);
@@ -150,10 +155,12 @@ function plannedPayloads(
   change: LightingChange,
 ): Map<StoredRgbPart, Uint8Array> {
   const planned = new Map(stored);
+  let core = stored.get(CORE_PART)!;
   if (change.brightnessPercent !== undefined) {
-    const brightnessRaw = brightnessRawFromPercent(change.brightnessPercent);
-    planned.set(CORE_PART, withRgbCoreBrightness(stored.get(CORE_PART)!, brightnessRaw));
+    core = withRgbCoreBrightness(core, brightnessRawFromPercent(change.brightnessPercent));
   }
+  if (change.layeredEffects) core = withRgbEffects(core, change.layeredEffects);
+  planned.set(CORE_PART, core);
   const keyColors = change.keyColors ?? [];
   for (const [part, firstRow] of ROW_PARTS) {
     const rowColors = keyColors.filter(

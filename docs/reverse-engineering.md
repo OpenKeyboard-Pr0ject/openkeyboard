@@ -181,6 +181,9 @@ On 2026-10-16, on the owner's 80HE (firmware 2.14.1), with the owner's approval 
 | 14 | Typing Profile key colors | Script replaying the four messages with the rows from before experiment 12, approved by the owner | Not needed | `08 01` answered status `0x88`. All 43 structures matched the snapshot from before experiment 12 (SHA-256 prefix `add81bbb510e6280`) |
 | 15 | Typing Profile brightness changed and set back to 100 % | OpenKeyboard with the fixed editor (owner clicked Save twice) | Same write | All 43 structures matched the snapshot from before experiment 12, key colors included. First verified RGB write by the app |
 
+| 16 | Survey of RGB Settings: each base effect, each Fx layer and each parameter once, nine presets | Wootility Web 5.4.2, previews only (storage `00`), approved by the owner | Wootility Undo, 54 steps, then Save of unchanged settings | Field 4 decoded for all 14 effects (see [wooting.md](wooting.md#effects)). Before Save, the last previews of `0x16`, `0x0E` and `0x0F` equaled the snapshot. All 43 structures matched the snapshot taken before the session (SHA-256 prefix `cfe50083dbc590ef`) |
+| 17 | Slider ranges, Static base with an Fx layer, three Fx layers | Wootility Web 5.4.2, previews only | Undo, 16 steps, then Save of unchanged settings | Ranges read from the sliders' `aria-valuemin` and `aria-valuemax`. A Static base writes no layer. Three Fx layers at most. All 43 structures matched the same snapshot |
+
 The snapshot reads `0B`, `13`, `33` and `27`, `30`, `31`, `3D`, `37`, `32`, `23`, `24`, `29`, `42` for slots 0 to 3. The editor now reads every RGB part before the first preview and checks all three parts after saving, so experiment 13 cannot repeat silently. Experiment 15 confirmed the fixed editor on hardware.
 
 ## Lessons
@@ -191,5 +194,8 @@ The snapshot reads `0B`, `13`, `33` and `27`, `30`, `31`, `3D`, `37`, `32`, `23`
 - **Compare by meaning, not bytes, after a write:** devices may normalize what they store, for example packed vs unpacked lists.
 - **Firmware can change under you:** the keyboard went from 2.14.0 to 2.14.1 between sessions (updated in Wootility). Re-read the version before relying on old captures.
 - **Never read between previews:** the 80HE answered RGB reads during a pending preview with garbled data that still looked valid. Verify every part a write touches, not only the parts that changed.
+- **Undo is a safe reset, Save makes it final:** after a preview session, undoing every step in Wootility sent previews equal to the stored bytes. Check the last preview of every part against the snapshot, then save unchanged settings so the keyboard leaves preview mode, and re-read everything.
+- **A click that changes nothing sends nothing:** choosing the preset or option already in place sent no report. When a capture is empty, check that the state really changed before blaming the hook.
+- **Log full bytes:** the first logging hook cut long reports and dropped trailing zeros. A second hook that kept every byte was needed for the 201-byte color rows.
 - **Commit on release:** Wootility's sliders only commit, preview and enable Save when the pointer is released. Arrow keys moved the thumb but sent nothing.
 - **Browser automation tip:** clicks by accessibility reference sometimes did nothing after the page scrolled. Clicking by screen coordinates from a fresh screenshot worked.

@@ -108,6 +108,10 @@ export class ProtobufMessage {
     return new ProtobufMessage([]);
   }
 
+  fieldNumbers(): number[] {
+    return [...new Set(this.fields.map((field) => field.fieldNumber))];
+  }
+
   has(fieldNumber: number): boolean {
     return this.fields.some((field) => field.fieldNumber === fieldNumber);
   }

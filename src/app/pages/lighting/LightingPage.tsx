@@ -17,12 +17,18 @@ import { PageHeader } from "../../components/PageHeader";
 import { describeEffect } from "../../format/lighting-format";
 import { useLoadable } from "../../hooks/use-loadable";
 import { KeyColorLightingForm } from "./KeyColorLightingForm";
+import { LayeredLightingWorkspace } from "./LayeredLightingWorkspace";
 import { LightingForm } from "./LightingForm";
 
 const SAVED_NOTICE = "Saved to the keyboard and confirmed by reading it back.";
 const READ_ONLY_EXPLANATION = "OpenKeyboard reads the lighting with the same commands as the vendor's tool. "
   + "Changing it is not supported on this keyboard yet.";
 const MAXIMUM_LISTED_COLORS = 16;
+
+export const HIDDEN_KEY_COLORS_TITLE = "An animated effect covers the key colors";
+export const HIDDEN_KEY_COLORS_EXPLANATION = "This profile runs an animated base effect, so the keyboard shows "
+  + "the effect instead of these key colors. Key colors are still saved, and they appear once the base effect is "
+  + "set to Static.";
 
 interface LightingPageProps {
   readonly reader: KeyboardLightingReader;
@@ -33,8 +39,10 @@ interface LightingPageProps {
 export function LightingPage({ reader, editor, physicalLayout }: LightingPageProps) {
   const lighting = useLoadable(() => reader.readLighting());
   const [editing, setEditing] = useState(false);
+  const [savedCount, setSavedCount] = useState(0);
   const { state } = lighting;
   const profileName = state.status === "ready" ? state.value.profileName : undefined;
+  const catalog = editor?.supportsKeyColors ? editor.layeredEffectCatalog : undefined;
 
   return (
     <div className="flex flex-col gap-6">
@@ -53,13 +61,34 @@ export function LightingPage({ reader, editor, physicalLayout }: LightingPagePro
       {state.status === "failed" && (
         <Card><Message>Could not read the lighting: {describeError(state.error)}</Message></Card>
       )}
-      {state.status === "ready" && (
+      {state.status === "ready" && editor && catalog && (
+        <>
+          {state.notice && <Notice>{state.notice}</Notice>}
+          <LayeredLightingWorkspace
+            key={savedCount}
+            current={state.value}
+            editor={editor}
+            catalog={catalog}
+            physicalLayout={physicalLayout}
+            onSaved={(saved) => {
+              setSavedCount((count) => count + 1);
+              lighting.show(saved, SAVED_NOTICE);
+            }}
+          />
+        </>
+      )}
+      {state.status === "ready" && !catalog && (
         <>
           {state.notice && <Notice>{state.notice}</Notice>}
           {!(editing && editor?.supportsKeyColors) && (
             <KeyColorsPicture state={state.value} physicalLayout={physicalLayout} />
           )}
           {!editor && <Callout tone="neutral" title="Read only">{READ_ONLY_EXPLANATION}</Callout>}
+          {state.value.effectHidesKeyColors && (
+            <Callout tone="warning" title={HIDDEN_KEY_COLORS_TITLE}>
+              <p className="m-0">{HIDDEN_KEY_COLORS_EXPLANATION}</p>
+            </Callout>
+          )}
           {editing && editor?.supportsKeyColors && (
             <KeyColorLightingForm
               current={state.value}
@@ -117,7 +146,7 @@ function LightingOverview({ state, onEdit }: LightingOverviewProps) {
   const colors = listedColors(state);
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      <Card title="Colours">
+      <Card title="Colors">
         {colors.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {colors.map((color) => (
