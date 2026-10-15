@@ -170,6 +170,19 @@ All experiments ran on 2026-10-13, on the owner's wired BlackWidow V3 Mini, with
 | 10 | Brightness 60 → 40 → 60 %, then 12 effects, polling 1000 → 500 → 125 → 1000 Hz, sleep 900 → 600 → 900 s | Same script | Every value read back as written. The final state was byte-identical to the start |
 | 11 | Wave with direction `01`, watched by the owner | Spectrum cycling | `01` runs left to right |
 
+### Wooting RGB
+
+On 2026-10-16, on the owner's 80HE (firmware 2.14.1), with the owner's approval for a supervised RGB write on Typing Profile.
+
+| # | Change | Written by | Restored by | Result |
+|---|---|---|---|---|
+| 12 | Typing Profile brightness 255 → 230 | Wootility Web 5.4.2 | Experiment 13 | Captured the RGB write: previews `0x16`, `0x0E`, `0x0F` with storage `00`, then feature `08 01`. 43 structures read before and after: only `0x32` slot 1 field 1.1 changed |
+| 13 | Typing Profile brightness 230 → 255 | OpenKeyboard (owner clicked Save) | Experiment 14 | Brightness was restored, but the key colors of rows 0 and 3 were damaged. The first editor version read `0x23` and `0x24` after previewing `0x16`, received garbled rows and wrote them back |
+| 14 | Typing Profile key colors | Script replaying the four messages with the rows from before experiment 12, approved by the owner | Not needed | `08 01` answered status `0x88`. All 43 structures matched the snapshot from before experiment 12 (SHA-256 prefix `add81bbb510e6280`) |
+| 15 | Typing Profile brightness changed and set back to 100 % | OpenKeyboard with the fixed editor (owner clicked Save twice) | Same write | All 43 structures matched the snapshot from before experiment 12, key colors included. First verified RGB write by the app |
+
+The snapshot reads `0B`, `13`, `33` and `27`, `30`, `31`, `3D`, `37`, `32`, `23`, `24`, `29`, `42` for slots 0 to 3. The editor now reads every RGB part before the first preview and checks all three parts after saving, so experiment 13 cannot repeat silently. Experiment 15 confirmed the fixed editor on hardware.
+
 ## Lessons
 
 - **Name things by evidence, not by guess:** `0x1D` was first called a "settings update marker" because it always preceded `0x11`. It turned out to be a full data report that was empty at the time.
@@ -177,4 +190,6 @@ All experiments ran on 2026-10-13, on the owner's wired BlackWidow V3 Mini, with
 - **Command ids and report types are separate namespaces:** feature `0x15` (keys off) and output report `0x15` (per-key actuation) are unrelated.
 - **Compare by meaning, not bytes, after a write:** devices may normalize what they store, for example packed vs unpacked lists.
 - **Firmware can change under you:** the keyboard went from 2.14.0 to 2.14.1 between sessions (updated in Wootility). Re-read the version before relying on old captures.
+- **Never read between previews:** the 80HE answered RGB reads during a pending preview with garbled data that still looked valid. Verify every part a write touches, not only the parts that changed.
+- **Commit on release:** Wootility's sliders only commit, preview and enable Save when the pointer is released. Arrow keys moved the thumb but sent nothing.
 - **Browser automation tip:** clicks by accessibility reference sometimes did nothing after the page scrolled. Clicking by screen coordinates from a fresh screenshot worked.

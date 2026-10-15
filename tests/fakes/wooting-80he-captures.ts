@@ -80,3 +80,13 @@ export const tenzRgbRowsPayload = payloadOf(TENZ_GRADIENT_RGB_ROW.repeat(3));
 export const tenzRgbCorePayload = payloadOf("0a0b08b30110ffff0318ffff032200");
 export const typingRgbCorePayload = payloadOf("0a0b08ff0110ffff0318ffff03220a0a080a06080010101800");
 export const ultraRgbCorePayload = payloadOf("0a0a087010ffff0318ffff03");
+
+export const wootilityTypingBrightness230CoreReport = payloadOf(
+  "d1da160019000a0b08e60110ffff0318ffff03220a0a080a06080010101800",
+);
+export const wootilitySaveTypingRgbCommand = payloadOf("d1da0801000000");
+
+export const rgbRowsReadDuringPreviewPayload = payloadOf(
+  "0a260a2480f00380f00380f00380f00380f00380f40380f403800c776f6f743a703a626c61636b00"
+  + TENZ_GRADIENT_RGB_ROW.repeat(2),
+);

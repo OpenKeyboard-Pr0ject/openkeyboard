@@ -124,6 +124,11 @@ export class ProtobufMessage {
     return this.withRepeated(fieldNumber, values.map((value) => ({ fieldNumber, wireType: WIRE_VARINT, value })));
   }
 
+  withPackedVarints(fieldNumber: number, values: readonly number[]): ProtobufMessage {
+    const packed = Uint8Array.from(values.flatMap(encodeVarint));
+    return this.withField({ fieldNumber, wireType: WIRE_LENGTH_DELIMITED, value: packed });
+  }
+
   withRepeatedMessages(fieldNumber: number, messages: readonly ProtobufMessage[]): ProtobufMessage {
     return this.withRepeated(
       fieldNumber,

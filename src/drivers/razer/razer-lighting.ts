@@ -7,6 +7,7 @@ import {
   type LightingChange,
   type LightingState,
   sameLightingEffect,
+  KeyColorsNotSupportedError,
   UnsupportedLightingEffectError,
   type WritableLightingEffect,
   type WritableLightingEffectKind,
@@ -40,6 +41,7 @@ const SINGLE_COLOR_EFFECTS: ReadonlySet<WritableLightingEffectKind> = new Set(["
 export class RazerLighting implements KeyboardLightingReader, KeyboardLightingEditor {
   readonly supportedEffects = RAZER_LIGHTING_EFFECTS;
   readonly maximumEffectColors = MAXIMUM_EFFECT_COLORS;
+  readonly supportsKeyColors = false;
 
   constructor(private readonly channel: RazerCommandChannel) {}
 
@@ -69,6 +71,7 @@ export class RazerLighting implements KeyboardLightingReader, KeyboardLightingEd
 }
 
 function validate(change: LightingChange): void {
+  if (change.keyColors) throw new KeyColorsNotSupportedError();
   if (change.brightnessPercent !== undefined) assertValidBrightness(change.brightnessPercent);
   if (change.effect) assertWritableEffect(change.effect);
 }

@@ -9,9 +9,11 @@ export const WOOTING_80HE_PRODUCT_ID = 0x1402;
 
 export const WOOTING_HARDWARE_VERIFIED_PRODUCT_IDS: ReadonlySet<number> = new Set([WOOTING_80HE_PRODUCT_ID]);
 export const WOOTING_WRITE_VERIFIED_PRODUCT_IDS: ReadonlySet<number> = new Set([WOOTING_80HE_PRODUCT_ID]);
+export const WOOTING_RGB_WRITE_VERIFIED_PRODUCT_IDS: ReadonlySet<number> = new Set([WOOTING_80HE_PRODUCT_ID]);
 
 export const WootingCommand = {
   getFirmwareVersion: 0x01,
+  saveRgbProfile: 0x08,
   getCurrentProfileIndex: 0x0b,
   getKeyboardProfile: 0x27,
   getKeyMapping: 0x30,
@@ -26,10 +28,15 @@ export const WootingCommand = {
 export type WootingCommandId = (typeof WootingCommand)[keyof typeof WootingCommand];
 
 export const WootingReportType = {
+  rgbUpperRows: 0x0e,
+  rgbLowerRows: 0x0f,
   keyboardProfileSettings: 0x11,
   perKeyActuation: 0x15,
   perKeyRapidTrigger: 0x1d,
+  rgbCore: 0x16,
 } as const;
+
+export const WOOTING_PREVIEW_STORAGE = 0x00;
 
 export type WootingReportTypeId = (typeof WootingReportType)[keyof typeof WootingReportType];
 

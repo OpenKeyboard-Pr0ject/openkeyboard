@@ -16,6 +16,7 @@ import { KeyboardCanvas } from "../../components/KeyboardCanvas";
 import { PageHeader } from "../../components/PageHeader";
 import { describeEffect } from "../../format/lighting-format";
 import { useLoadable } from "../../hooks/use-loadable";
+import { KeyColorLightingForm } from "./KeyColorLightingForm";
 import { LightingForm } from "./LightingForm";
 
 const SAVED_NOTICE = "Saved to the keyboard and confirmed by reading it back.";
@@ -55,9 +56,23 @@ export function LightingPage({ reader, editor, physicalLayout }: LightingPagePro
       {state.status === "ready" && (
         <>
           {state.notice && <Notice>{state.notice}</Notice>}
-          <KeyColorsPicture state={state.value} physicalLayout={physicalLayout} />
+          {!(editing && editor?.supportsKeyColors) && (
+            <KeyColorsPicture state={state.value} physicalLayout={physicalLayout} />
+          )}
           {!editor && <Callout tone="neutral" title="Read only">{READ_ONLY_EXPLANATION}</Callout>}
-          {editing && editor ? (
+          {editing && editor?.supportsKeyColors && (
+            <KeyColorLightingForm
+              current={state.value}
+              editor={editor}
+              physicalLayout={physicalLayout}
+              onSaved={(saved) => {
+                setEditing(false);
+                lighting.show(saved, SAVED_NOTICE);
+              }}
+              onCancel={() => setEditing(false)}
+            />
+          )}
+          {editing && editor && !editor.supportsKeyColors ? (
             <LightingForm
               current={state.value}
               editor={editor}
@@ -67,7 +82,7 @@ export function LightingPage({ reader, editor, physicalLayout }: LightingPagePro
               }}
               onCancel={() => setEditing(false)}
             />
-          ) : (
+          ) : !editing && (
             <LightingOverview state={state.value} onEdit={editor ? () => setEditing(true) : undefined} />
           )}
         </>

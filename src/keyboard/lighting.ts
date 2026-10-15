@@ -41,6 +41,7 @@ export interface LightingState {
 export interface LightingChange {
   readonly brightnessPercent?: number;
   readonly effect?: WritableLightingEffect;
+  readonly keyColors?: readonly KeyColor[];
 }
 
 export interface KeyboardLightingReader {
@@ -50,6 +51,7 @@ export interface KeyboardLightingReader {
 export interface KeyboardLightingEditor {
   readonly supportedEffects: readonly WritableLightingEffectKind[];
   readonly maximumEffectColors: number;
+  readonly supportsKeyColors: boolean;
   updateLighting(change: LightingChange): Promise<LightingState>;
 }
 
@@ -81,6 +83,28 @@ export class UnsupportedLightingEffectError extends Error {
     super(`The ${effect.kind} effect cannot be written: ${reason}`);
     this.name = "UnsupportedLightingEffectError";
   }
+}
+
+export class KeyColorsNotSupportedError extends Error {
+  constructor() {
+    super("This keyboard cannot set a color per key.");
+    this.name = "KeyColorsNotSupportedError";
+  }
+}
+
+export class InvalidKeyColorError extends Error {
+  constructor(keyColor: KeyColor) {
+    super(
+      `The color for row ${keyColor.matrixRow}, column ${keyColor.matrixColumn} must have whole channels `
+      + `from 0 to 255.`,
+    );
+    this.name = "InvalidKeyColorError";
+  }
+}
+
+export function assertValidKeyColors(keyColors: readonly KeyColor[]): void {
+  const invalid = keyColors.find((keyColor) => !isValidColor(keyColor.color));
+  if (invalid) throw new InvalidKeyColorError(invalid);
 }
 
 export function assertValidBrightness(percent: number): void {

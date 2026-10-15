@@ -72,7 +72,7 @@ Command names come from [libwootility](https://github.com/meeuw/libwootility) (`
 | `0x03` | GET_SERIAL | Wootility sends it with parameters `01`, `02`, `03`. Not used, because it returns personal data |
 | `0x04` | GET_RGB_PROFILE_COUNT | Not used |
 | `0x07` | RELOAD_PROFILE0 | **Never sent** |
-| `0x08` | SAVE_RGB_PROFILE | **Never sent.** Wootility sends `08 <slot>` while saving |
+| `0x08` | SAVE_RGB_PROFILE | Sent by `WootingLightingEditor` as `08 <active slot>` after the RGB previews, as Wootility does |
 | `0x09`, `0x0A`, `0x10` | GET_DIGITAL_PROFILES_COUNT, GET_ANALOG_PROFILES_COUNT, GET_NUMBER_OF_KEYS | Status `0x66` (unsupported) |
 | `0x0B` | GET_CURRENT_KEYBOARD_PROFILE_INDEX | **Used.** Payload `<active slot> 00` |
 | `0x13` | GET_DEVICE_CONFIG | Read only. Payload `00 00 00 00 11 00 0c`, not decoded |
@@ -226,7 +226,7 @@ read back              0a 09 0a 01 42 12 04 08 99 93 01   0a 05 0a 01 41 18 01
 
 ## RGB lighting
 
-Lighting is stored per profile. Wootility reads `32`, `23` and `24` for every slot when it connects; OpenKeyboard reads them for the active slot only. Verified read-only on the 80HE (firmware 2.14.1) on 2026-10-16. Nothing about lighting is written yet.
+Lighting is stored per profile. Wootility reads `32`, `23` and `24` for every slot when it connects; OpenKeyboard reads them for the active slot only. Reads verified on the 80HE (firmware 2.14.1) on 2026-10-16. The write sequence was captured from Wootility the same day, see [Writing lighting](#writing-lighting).
 
 **Key colors** (`0x23 <slot>` rows 0-2, `0x24 <slot>` rows 3-5): a protobuf with one repeated field 1 per matrix row. Each row's field 1 holds 21 packed varints, one RGB565 color per matrix column, so the colors follow the matrix positions in [Key mapping](#key-mapping-and-key-codes).
 
@@ -246,6 +246,29 @@ Slots 0-2 of the user's 80HE all held the same left-to-right gradient: columns 0
 | 4 | empty | `0a 08 0a 06 08 00 10 10 18 00` | absent | Effect layers. Only Typing Profile runs an animated effect (Wave) in Wootility. Hypothesis |
 
 OpenKeyboard shows brightness as field 1.1 / 255 in whole percent, the key colors on the keyboard drawing, and "an animated effect, not decoded yet" when field 4 is not empty.
+
+### Writing lighting
+
+Captured from Wootility Web 5.4.2 while it lowered Typing Profile's brightness from 255 to 230 (90 %) and saved. Typing Profile was the active profile (slot 1).
+
+1. **Preview while editing:** releasing the brightness slider sent one output report `D1 DA 16 00 <length> <core>`, storage `00`. Moving the slider with the arrow keys sent nothing and did not enable Save.
+2. **Save to Keyboard:** the 26-message save started with the RGB part:
+
+```
+output r1  D1 DA 16 00 19 00  0a0b08e60110ffff0318ffff03220a0a080a06080010101800   core, storage 00
+output r3  D1 DA 0E 00 C9 00  <201 bytes, the 0x23 reply unchanged>              rows 0-2, storage 00
+output r3  D1 DA 0F 00 C9 00  <201 bytes, the 0x24 reply unchanged>              rows 3-5, storage 00
+feature    D1 DA 08 01                                                           SAVE_RGB_PROFILE, slot 1
+```
+
+- **Same layout as the reads:** the `0x16`, `0x0E` and `0x0F` payloads are byte-identical to the `0x32`, `0x23` and `0x24` replies except for the changed value. Rows are packed varints, as in the reads.
+- **Preview, then save:** unlike profile settings, which are written with storage `slot << 1 | 1`, RGB is previewed with storage `00` on the active profile and committed with feature `08 <slot>`. RGB can therefore only be saved for the active profile.
+- **Nothing else changed:** reading all 43 known structures before and after the save showed one difference, `0x32` slot 1 field 1.1 `ff` → `e6`.
+
+- **Save replies:** feature `08 <slot>` answers with status `0x88` and an empty payload, like the read commands.
+- **Never read RGB during a preview:** after an RGB preview and before `08`, reading `0x23` and `0x24` returned garbled rows. Row 0 kept 7 colors and then held the tail of the `0x37` metadata reply (`80 0c "woot:p:black" 00`), still 21 values long. Writing those rows back stored the damage. Read every part first, as Wootility writes from what it read when it connected.
+
+`WootingLightingEditor` reads `0x32`, `0x23` and `0x24` once, before any write, and refuses rows that are not 3 rows of 21 colors. It then sends the same four messages as Wootility, changing only brightness (field 1.1) and the colors of the keys that changed, and reads all three parts back to compare them by meaning. Its tests replay the captured bytes exactly and model the garbled reads. See [reverse-engineering.md](reverse-engineering.md#wooting-rgb) for what happened on hardware.
 
 ## Other payloads
 
@@ -305,13 +328,13 @@ Report types:
 | Type | Content | Read with | OpenKeyboard |
 |---|---|---|---|
 | `0x07` | Unknown, sent with storage `00` (`D1 DA 07 00 00 00 00 00 00 00 0C`) | | Never |
-| `0x0E`, `0x0F` | RGB color rows, upper and lower half | `0x23`, `0x24` (same layout) | Never |
+| `0x0E`, `0x0F` | RGB color rows, upper and lower half | `0x23`, `0x24` (same layout) | **Writes, verified**, storage `00` |
 | `0x11` | Profile settings | `0x27` | **Writes, verified** |
 | `0x12` | Unknown, empty on every capture | | Never |
 | `0x13` | Same protobuf as the `0x29` reply | `0x29` | Never |
 | `0x14` | Key mapping in four parts: `14 <storage> <part u16 LE> <length u16 LE> …`. Parts 2 and 3 are empty | `0x30` | Never |
 | `0x15` | Per-key actuation | `0x31` | **Writes, verified** |
-| `0x16` | RGB core | `0x32` (same layout) | Never |
+| `0x16` | RGB core | `0x32` (same layout) | **Writes, verified**, storage `00` |
 | `0x17` | Global settings, same protobuf as the `0x33` reply | `0x33` | Never |
 | `0x18` | Unknown, header only without a storage byte | | Never |
 | `0x1A` | Profile metadata, same protobuf as the `0x37` reply | `0x37` | Never |
@@ -354,11 +377,11 @@ These sequences were captured from Wootility Web with a logging-only hook. See [
 
 ## Commands that are never sent
 
-OpenKeyboard only sends the read commands marked **Used** above, and writes only output reports `0x11`, `0x15` and `0x1D`, each verified on hardware. It never sends these feature commands:
+OpenKeyboard only sends the read commands marked **Used** above. It writes output reports `0x11`, `0x15` and `0x1D`, and the RGB reports `0x16`, `0x0E`, `0x0F` with feature `0x08`, each verified on hardware. It never sends these feature commands:
 
 - bootloader (`0x02`)
 - reload (`0x07`, `0x26`)
-- save (`0x08`, `0x2A`, `0x2F`, `0x35`)
+- save (`0x2A`, `0x2F`, `0x35`)
 - keys off/on (`0x15`, `0x16`)
 - activate profile (`0x17`)
 - soft reset (`0x19`)
