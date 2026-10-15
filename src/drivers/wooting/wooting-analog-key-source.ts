@@ -13,24 +13,57 @@ export class AnalogInterfaceNotAuthorizedError extends Error {
 }
 
 export class WootingAnalogKeySource implements AnalogKeySource {
+  private activeSubscriptions = 0;
+  private pendingOpen: Promise<void> | undefined;
+  private pendingClose: Promise<void> | undefined;
+
   constructor(
     private readonly configDevice: HIDDevice,
     private readonly listAuthorizedDevices: AuthorizedDeviceLister,
   ) {}
 
   async start(listener: AnalogKeyListener): Promise<AnalogKeySubscription> {
-    const analogDevice = await this.findAnalogInterface();
-    if (!analogDevice.opened) await analogDevice.open();
+    this.activeSubscriptions += 1;
+    let analogDevice: HIDDevice;
+    try {
+      analogDevice = await this.findAnalogInterface();
+      await this.openWhenClosed(analogDevice);
+    } catch (error) {
+      this.activeSubscriptions -= 1;
+      throw error;
+    }
     const onInputReport = (event: HIDInputReportEvent): void => {
       listener(decodeWootingAnalogReport(dataViewToBytes(event.data)));
     };
     analogDevice.addEventListener("inputreport", onInputReport);
+    let stopped = false;
     return {
-      async stop() {
+      stop: async () => {
+        if (stopped) return;
+        stopped = true;
         analogDevice.removeEventListener("inputreport", onInputReport);
-        if (analogDevice.opened) await analogDevice.close().catch(() => undefined);
+        this.activeSubscriptions -= 1;
+        await this.closeWhenUnused(analogDevice);
       },
     };
+  }
+
+  private async openWhenClosed(analogDevice: HIDDevice): Promise<void> {
+    await this.pendingClose;
+    if (analogDevice.opened) return;
+    this.pendingOpen ??= analogDevice.open().finally(() => {
+      this.pendingOpen = undefined;
+    });
+    await this.pendingOpen;
+  }
+
+  private async closeWhenUnused(analogDevice: HIDDevice): Promise<void> {
+    await this.pendingOpen?.catch(() => undefined);
+    if (this.activeSubscriptions > 0 || !analogDevice.opened) return;
+    this.pendingClose ??= analogDevice.close().catch(() => undefined).finally(() => {
+      this.pendingClose = undefined;
+    });
+    await this.pendingClose;
   }
 
   private async findAnalogInterface(): Promise<HIDDevice> {

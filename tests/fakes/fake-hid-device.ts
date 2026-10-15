@@ -20,6 +20,7 @@ export interface FakeHidDeviceOptions {
 
 const COMMAND_REPORT_ID = 1;
 const COMMAND_REPORT_BYTES = 7;
+const STATE_CHANGE_IN_PROGRESS = "An operation that changes the device state is in progress.";
 
 function byteReport(reportId: number, byteCount: number): HIDReportInfo {
   return { reportId, items: [{ reportSize: 8, reportCount: byteCount }] };
@@ -52,6 +53,7 @@ export class FakeHidDevice {
   readonly sentFeatureReports: Array<{ reportId: number; data: Uint8Array }> = [];
   readonly sentOutputReports: Array<{ reportId: number; data: Uint8Array }> = [];
   private readonly inputListeners = new Set<InputReportListener>();
+  private stateChangeInProgress = false;
 
   constructor(private readonly options: FakeHidDeviceOptions = {}) {
     this.vendorId = options.vendorId ?? WOOTING_VENDOR_ID;
@@ -61,11 +63,20 @@ export class FakeHidDevice {
   }
 
   async open(): Promise<void> {
-    this.opened = true;
+    await this.changeOpenState(true);
   }
 
   async close(): Promise<void> {
-    this.opened = false;
+    await this.changeOpenState(false);
+  }
+
+  private async changeOpenState(opened: boolean): Promise<void> {
+    if (this.stateChangeInProgress) throw new DOMException(STATE_CHANGE_IN_PROGRESS, "InvalidStateError");
+    if (this.opened === opened) return;
+    this.stateChangeInProgress = true;
+    await Promise.resolve();
+    this.opened = opened;
+    this.stateChangeInProgress = false;
   }
 
   async forget(): Promise<void> {
