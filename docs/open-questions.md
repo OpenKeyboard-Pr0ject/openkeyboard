@@ -17,6 +17,11 @@ What is still unknown, what is implemented but untested, and what would come nex
 | Global settings `0x33` (`5`, `10`, `1`) | Change the RGB idle timers in Wootility and poll `0x33` |
 | How Wootility converts a legacy 8-bit per-key list | Save TenZ Ultra Profile once in Wootility and compare `0x31` before and after |
 | Whether other Wooting models (60HE+, Two HE, UwU) share the 80HE layout | Needs those keyboards. The read path already accepts any `0xFF55` Wooting device but marks it unverified |
+| RGB writes (`0x0E`, `0x0F`, `0x16`, feature `0x08`) | Read layout is known (see [wooting.md](wooting.md#rgb-lighting)). Capture Wootility changing one key color and the brightness on Typing Profile, replay the bytes, then compare `0x23`, `0x24`, `0x32` before and after |
+| Effect layers in `0x32` field 4 | Change Typing Profile's Wave speed and direction in Wootility, one at a time, and read `0x32` after each |
+| `0x32` fields 1.2 and 1.3 (`0xFFFF`) | Look for a Wootility setting that changes them |
+| Whether per-key settings for the Spacebar need all three matrix positions (row 5, columns 4, 6, 8) | Set a per-key actuation on the Spacebar in Wootility and read `0x31`. OpenKeyboard edits column 6, the position the analog stream reports |
+| Split press and release sensitivity | Wootility offers "Split sensitivity" on the Rapid Trigger page. OpenKeyboard does not offer it until its format is captured |
 
 ## Razer unknowns
 
@@ -43,8 +48,8 @@ What is still unknown, what is implemented but untested, and what would come nex
 1. **Per-key Rapid Trigger off in an "on" profile, and split sensitivity:** after the experiments above.
 2. **Profile switching from the app:** feature `0x17 <slot>`. It is a write with no data, but it changes the keyboard's behavior immediately. Ask the owner first.
 3. **Wooting key remapping (`0x14`):** the mapping read is understood. The write needs four parts and a capture of a single remap in Wootility.
-4. **Wooting RGB (`0x0E`, `0x0F`, `0x16`, feature `0x08`):** formats are partly known from libwootility. Confirm by capture before writing.
+4. **Wooting RGB writes (`0x0E`, `0x0F`, `0x16`, feature `0x08`):** the read side is decoded and shown on RGB Settings. Capture one supervised write in Wootility before OpenKeyboard writes anything.
 5. **VIA and Vial editing:** set keycode (`05`) is simple, but Vial keyboards may need the unlock flow. Implement only after the read path is verified on hardware.
-6. **Keyboard drawing for Wooting:** reuse the KLE renderer with a built-in 80HE layout, so per-key settings can be picked by clicking keys instead of a list.
+6. **Layouts for more keyboards:** the 80HE has a built-in layout (`wooting-80he-layout.ts`). Other models fall back to a matrix grid until someone adds their layout next to their driver.
 7. **Live analog view on the keyboard drawing:** color each key by travel.
 8. **Razer per-key colors:** through the custom frame (`0F:03`) or the standard LampArray interface (MI_04, usage page `0x59`).

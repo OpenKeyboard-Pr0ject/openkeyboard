@@ -72,3 +72,11 @@ export const analogReportAStartingToMove = capturedReply("61040008");
 export const analogReportEscapePressed = capturedReply("0029c02c");
 export const analogReportFourKeysHeld = capturedReply("430841fe" + "6216c0ca" + "45178009" + "a62cc1ff");
 export const analogReportNoKeysHeld = capturedReply("");
+
+const TENZ_GRADIENT_RGB_ROW = "0a410a3f"
+  + "80f003".repeat(5) + "80f403".repeat(4) + "a0f703".repeat(4) + "e0fa03".repeat(4) + "e0fe03".repeat(4);
+
+export const tenzRgbRowsPayload = payloadOf(TENZ_GRADIENT_RGB_ROW.repeat(3));
+export const tenzRgbCorePayload = payloadOf("0a0b08b30110ffff0318ffff032200");
+export const typingRgbCorePayload = payloadOf("0a0b08ff0110ffff0318ffff03220a0a080a06080010101800");
+export const ultraRgbCorePayload = payloadOf("0a0a087010ffff0318ffff03");

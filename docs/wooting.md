@@ -13,11 +13,12 @@ Reference for the Wooting configuration protocol as used by OpenKeyboard. Everyt
 7. [Key mapping and key codes](#key-mapping-and-key-codes)
 8. [Per-key actuation](#per-key-actuation)
 9. [Per-key Rapid Trigger](#per-key-rapid-trigger)
-10. [Other payloads](#other-payloads)
-11. [Analog key stream](#analog-key-stream)
-12. [Writing](#writing)
-13. [What Wootility sends](#what-wootility-sends)
-14. [Commands that are never sent](#commands-that-are-never-sent)
+10. [RGB lighting](#rgb-lighting)
+11. [Other payloads](#other-payloads)
+12. [Analog key stream](#analog-key-stream)
+13. [Writing](#writing)
+14. [What Wootility sends](#what-wootility-sends)
+15. [Commands that are never sent](#commands-that-are-never-sent)
 
 ## USB interfaces
 
@@ -78,7 +79,7 @@ Command names come from [libwootility](https://github.com/meeuw/libwootility) (`
 | `0x15`, `0x16` | KEYS_OFF, KEYS_ON | **Never sent** |
 | `0x17` | ACTIVATE_PROFILE | **Never sent.** Wootility sends `17 <slot>` when a profile is selected |
 | `0x19` | DO_SOFT_RESET | **Never sent** |
-| `0x23`, `0x24` | GET_RGB_PROFILE_COLOR_PART1/2 | Read by Wootility per slot. Not used |
+| `0x23`, `0x24` | GET_RGB_PROFILE_COLOR_PART1/2 | **Used.** Per-key colors, see [RGB lighting](#rgb-lighting) |
 | `0x26` | RELOAD_PROFILE | **Never sent** |
 | `0x27` | GET_KEYBOARD_PROFILE | **Used.** Profile settings, see [Profile settings](#profile-settings) |
 | `0x28` | GET_GAMEPAD_MAPPING | Read only. Empty on every slot |
@@ -88,7 +89,7 @@ Command names come from [libwootility](https://github.com/meeuw/libwootility) (`
 | `0x2C` | SET_RAW_SCANNING | **Never sent** |
 | `0x30` | GET_MAPPING_PROFILE | **Used.** Key mapping, see [Key mapping and key codes](#key-mapping-and-key-codes) |
 | `0x31` | GET_ACTUATION_PROFILE | **Used.** Per-key actuation |
-| `0x32` | GET_RGB_PROFILE_CORE | Read by Wootility. Not used |
+| `0x32` | GET_RGB_PROFILE_CORE | **Used.** Brightness and effect layers, see [RGB lighting](#rgb-lighting) |
 | `0x33` | GET_GLOBAL_SETTINGS | Read only. See [Other payloads](#other-payloads) |
 | `0x34` | GET_AKC_PROFILE | Read only. `10 00 18 00` on slots 0 and 1, entries on slot 2 (advanced keys, hypothesis) |
 | `0x36` | GET_RAPID_TRIGGER_PROFILE | Read only. Always empty on 2.14.x, even when keys have their own Rapid Trigger |
@@ -223,6 +224,29 @@ read back              0a 09 0a 01 42 12 04 08 99 93 01   0a 05 0a 01 41 18 01
 - **Profile sensitivity changes too:** when Q alone was given 0.30 mm, Wootility put Q in a "profile sensitivity" group and changed the profile sensitivity (settings field 4) to 0.30 mm.
 - **Not yet observed:** how Wootility turns Rapid Trigger off for a single key in a profile that has it on, and how split release sensitivity is stored.
 
+## RGB lighting
+
+Lighting is stored per profile. Wootility reads `32`, `23` and `24` for every slot when it connects; OpenKeyboard reads them for the active slot only. Verified read-only on the 80HE (firmware 2.14.1) on 2026-10-16. Nothing about lighting is written yet.
+
+**Key colors** (`0x23 <slot>` rows 0-2, `0x24 <slot>` rows 3-5): a protobuf with one repeated field 1 per matrix row. Each row's field 1 holds 21 packed varints, one RGB565 color per matrix column, so the colors follow the matrix positions in [Key mapping](#key-mapping-and-key-codes).
+
+```
+0a 41 0a 3f 80 f0 03 80 f0 03 ...   row: field 1 (65 bytes), field 1 (63 bytes), 21 varints
+80 f0 03 = 0xF800 = red             RGB565: red 5 bits << 11, green 6 bits << 5, blue 5 bits
+```
+
+Slots 0-2 of the user's 80HE all held the same left-to-right gradient: columns 0-4 `0xF800` (red), 5-8 `0xFA00`, 9-12 `0xFBA0`, 13-16 `0xFD60` and 17-20 `0xFF60` (yellow). The empty slot 3 was all black. This matches the red-to-yellow board Wootility shows.
+
+**Core** (`0x32 <slot>`):
+
+| Field | Slot 0 (TenZ) | Slot 1 (Typing) | Slot 2 (TenZ Ultra) | Meaning |
+|---|---|---|---|---|
+| 1.1 | `179` | `255` | `112` | Brightness out of 255. Wootility showed 100 % for Typing Profile |
+| 1.2, 1.3 | `0xFFFF` | `0xFFFF` | `0xFFFF` | Unknown |
+| 4 | empty | `0a 08 0a 06 08 00 10 10 18 00` | absent | Effect layers. Only Typing Profile runs an animated effect (Wave) in Wootility. Hypothesis |
+
+OpenKeyboard shows brightness as field 1.1 / 255 in whole percent, the key colors on the keyboard drawing, and "an animated effect, not decoded yet" when field 4 is not empty.
+
 ## Other payloads
 
 | Read | Payload | Interpretation |
@@ -235,7 +259,7 @@ read back              0a 09 0a 01 42 12 04 08 99 93 01   0a 05 0a 01 41 18 01
 From the write side (libwootility and captured saves):
 
 - **RGB color rows** (`0x0E`, `0x0F`): RGB565 colors (`(r & 0xF8) << 8 | (g & 0xFC) << 3 | b >> 3`) packed as varints, three rows of 21 keys per report. `80 f0 03` is `0xF800`, pure red, the TenZ profile color.
-- **RGB core** (`0x16`): field 1.1 looks like brightness (`230` on TenZ Profile, `255` on Typing Profile), followed by `0xFFFF` values. Hypothesis.
+- **RGB core** (`0x16`): field 1.1 looks like brightness (`230` on TenZ Profile, `255` on Typing Profile when captured), followed by `0xFFFF` values. It matches the `0x32` read layout, see [RGB lighting](#rgb-lighting).
 
 ## Analog key stream
 
@@ -281,13 +305,13 @@ Report types:
 | Type | Content | Read with | OpenKeyboard |
 |---|---|---|---|
 | `0x07` | Unknown, sent with storage `00` (`D1 DA 07 00 00 00 00 00 00 00 0C`) | | Never |
-| `0x0E`, `0x0F` | RGB color rows, upper and lower half | `0x23`, `0x24` (hypothesis) | Never |
+| `0x0E`, `0x0F` | RGB color rows, upper and lower half | `0x23`, `0x24` (same layout) | Never |
 | `0x11` | Profile settings | `0x27` | **Writes, verified** |
 | `0x12` | Unknown, empty on every capture | | Never |
 | `0x13` | Same protobuf as the `0x29` reply | `0x29` | Never |
 | `0x14` | Key mapping in four parts: `14 <storage> <part u16 LE> <length u16 LE> …`. Parts 2 and 3 are empty | `0x30` | Never |
 | `0x15` | Per-key actuation | `0x31` | **Writes, verified** |
-| `0x16` | RGB core | `0x32` (hypothesis) | Never |
+| `0x16` | RGB core | `0x32` (same layout) | Never |
 | `0x17` | Global settings, same protobuf as the `0x33` reply | `0x33` | Never |
 | `0x18` | Unknown, header only without a storage byte | | Never |
 | `0x1A` | Profile metadata, same protobuf as the `0x37` reply | `0x37` | Never |

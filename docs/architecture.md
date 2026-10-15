@@ -46,16 +46,19 @@ interface KeyboardCapabilities {
   readonly profileEditor?: KeyboardProfileEditor; // Wooting, write-verified models only
   readonly keymap?: KeymapReader;                 // VIA and Vial
   readonly definitionLoader?: KeyboardDefinitionLoader; // plain VIA only
-  readonly lighting?: KeyboardLightingReader;            // Razer
+  readonly lighting?: KeyboardLightingReader;            // Razer; Wooting reads per-key colors
   readonly lightingEditor?: KeyboardLightingEditor;      // Razer, write-verified models only
   readonly deviceSettings?: KeyboardDeviceSettingsReader; // Razer: battery, polling rate, sleep timer
   readonly deviceSettingsEditor?: KeyboardDeviceSettingsEditor; // Razer, write-verified models only
+  readonly physicalLayout?: PhysicalLayout;              // Wooting 80HE
 }
 ```
 
 - **Registry:** `keyboard-driver-registry.ts` lists the drivers in order: Wooting, Razer, then VIA. The browser chooser uses the union of their `requestFilters`. The first driver whose `supports()` accepts a granted `HIDDevice` opens it.
 - **One HIDDevice per collection:** a physical keyboard shows up as several `HIDDevice` objects, one per top-level collection. Drivers match exactly one of them, the config collection, so the keyboard is not listed twice. The Wooting analog source finds its sibling interface (`0xFF53`) at runtime through `listAuthorizedDevices`. See [webhid.md](webhid.md).
 - **Capabilities are optional:** the UI offers one sidebar section per capability that a session offers. A new vendor only adds a codec, a driver and a registry entry.
+- **Physical layouts:** `keyboard/physical-layout.ts` describes where each key sits (`x`, `y`, `width`, `height` in key units) and which matrix position it reads. Layout data is device-specific, so it lives with the driver (`drivers/wooting/wooting-80he-layout.ts`) and reaches the UI through `physicalLayout`. Without one, the UI draws `matrixGridLayout` from the keys a profile maps: one cell per matrix position, labeled from the HID usage. A new keyboard with analog keys therefore works before anyone draws its layout.
+- **Vendor-neutral settings:** analog settings use `KeyboardProfile` (actuation point, Rapid Trigger, per-key values) and lighting uses `LightingState` (brightness, an effect, optional `keyColors` per matrix position). A driver fills only what its keyboard has; for example Wooting reports `per-key` colors, Razer a single effect.
 - **Editing is gated:** `profileEditor` exists only for product ids in `WOOTING_WRITE_VERIFIED_PRODUCT_IDS` (the 80HE, `0x1402`). Other Wooting boards stay read-only, even though the protocol is probably shared. In the same way, `lightingEditor` and `deviceSettingsEditor` exist only for `RAZER_WRITE_VERIFIED_PRODUCT_IDS` (the wired BlackWidow V3 Mini, `0x0258`).
 
 ## Device sources
@@ -136,11 +139,13 @@ The UI only builds a `ProfileSettingsChange` with the fields the user actually c
 The UI lives in `src/app/` and uses React with Tailwind CSS v4. It only presents what the drivers offer; it adds no keyboard logic of its own.
 
 - **`App`:** subscribes to `KeyboardConnection` (`useConnectionState`). While no keyboard is connected it shows `ConnectionScreen` for the current state; once connected it shows `AppShell`.
-- **`AppShell` and `Sidebar`:** the sidebar shows the connected keyboard and one section per capability (`sectionsFor` in `layout/sections.ts`), in a fixed order: Profiles, Keymap, Lighting, Battery and performance, Live key input, then Device. The first section is selected when a keyboard connects. On narrow windows the sidebar becomes a top bar with horizontally scrolling sections.
-- **Pages:** `ProfilesPage`, `KeymapPage`, `LightingPage`, `DeviceSettingsPage`, `LiveKeysPage` and `DevicePage` (identity, **Disconnect**, **Forget device**). Each read page has **Refresh**, and each editor has a form with **Save to keyboard** and **Cancel**.
-- **Pure helpers:** the form logic lives in plain modules that are unit tested: `profile-draft.ts` (profile and per-key changes), `effect-draft.ts` (lighting effects) and `device-settings-draft.ts`.
+- **`AppShell`:** an icon rail (Keyboard, Settings, Help), a navigation panel for the chosen rail, a device bar and the page. Sections come from `navigationFor` in `layout/sections.ts`, in a fixed order: My Profiles, Actuation Point, Rapid Trigger, RGB Settings, Keymap, Battery and performance, Live key input, then Device, Interface and About. On narrow windows the rail becomes a top bar and the sections scroll horizontally.
+- **Profile editing:** when a keyboard has `profiles`, `ProfileEditingProvider` (`app/profile-editing/`) holds the selected profile and one draft for the whole session, so changes made on Actuation Point and Rapid Trigger are saved together with **Save to keyboard** in `ProfileBar`, as in Wootility. Switching profiles is blocked while the draft has unsaved changes.
+- **Selecting keys:** `KeyboardCanvas` draws a `PhysicalLayout`; keys are selected by clicking. A selection that covers every key edits the profile value and clears per-key values; a smaller selection gives those keys their own value. Turning Rapid Trigger off for some keys in a profile that has it on turns the profile setting off and enables the other keys one by one, because no per-key "off" format is known.
+- **Pages:** `ProfilesPage`, `ActuationPage`, `RapidTriggerPage`, `LightingPage` (RGB Settings), `KeymapPage`, `DeviceSettingsPage`, `LiveKeysPage`, `DevicePage`, `InterfacePage` and `AboutPage`.
+- **Pure helpers:** the editing logic lives in plain modules that are unit tested: `analog-draft.ts` (actuation, Rapid Trigger and per-key values), `effect-draft.ts` (lighting effects) and `device-settings-draft.ts`.
 - **Live key input:** `LiveKeysPage` keeps only the latest analog snapshot and renders once per animation frame, because the keyboard can send several hundred reports per second.
-- **Themes:** `System`, `Light` and `Dark` in the sidebar or on the connection screen. The choice is stored in `localStorage` (`openkeyboard.theme`); `System` follows `prefers-color-scheme`. Colors are CSS variables in `app/styles.css` that the `dark` class switches.
+- **Themes:** `System`, `Light` and `Dark` under Settings, Interface, or on the connection screen. The choice is stored in `localStorage` (`openkeyboard.theme`); `System` follows `prefers-color-scheme`. Colors are CSS variables in `app/styles.css` that the `dark` class switches.
 - **Branding:** `App` takes an `AppBranding` (tagline and footnote), so the desktop app can describe itself without changing the shared UI.
 - **Display:** millimeters are rounded to 0.05 mm and shown with two decimals, as Wootility shows them.
 

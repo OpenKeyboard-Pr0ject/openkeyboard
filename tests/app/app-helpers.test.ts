@@ -72,7 +72,13 @@ describe("sectionsFor", () => {
   it("keeps a fixed order across keyboards", () => {
     const wooting = { analogKeys: {}, profiles: {} } as unknown as KeyboardCapabilities;
 
-    expect(sectionsFor(wooting).map((section) => section.id)).toEqual(["profiles", "live-keys", "device"]);
+    expect(sectionsFor(wooting).map((section) => section.id)).toEqual([
+      "profiles",
+      "actuation",
+      "rapid-trigger",
+      "live-keys",
+      "device",
+    ]);
   });
 });
 
