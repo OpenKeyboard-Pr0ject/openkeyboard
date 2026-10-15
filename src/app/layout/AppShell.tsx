@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type { ConnectionState, KeyboardConnection } from "../../connection/keyboard-connection";
 import { AboutPage } from "../pages/AboutPage";
+import { ActuationPage } from "../pages/analog/ActuationPage";
+import { RapidTriggerPage } from "../pages/analog/RapidTriggerPage";
 import { DeviceSettingsPage } from "../pages/device-settings/DeviceSettingsPage";
 import { DevicePage } from "../pages/DevicePage";
 import { InterfacePage } from "../pages/InterfacePage";
@@ -8,6 +10,7 @@ import { KeymapPage } from "../pages/keymap/KeymapPage";
 import { LightingPage } from "../pages/lighting/LightingPage";
 import { LiveKeysPage } from "../pages/live-keys/LiveKeysPage";
 import { ProfilesPage } from "../pages/profiles/ProfilesPage";
+import { ProfileEditingProvider } from "../profile-editing/ProfileEditingContext";
 import type { ThemeControl } from "../theme/use-theme";
 import { DeviceBar } from "./DeviceBar";
 import { IconRail } from "./IconRail";
@@ -42,7 +45,7 @@ export function AppShell({ state, connection, theme }: AppShellProps) {
     if (firstSection) setSelected(firstSection.id);
   };
 
-  return (
+  const shell = (
     <div className="flex h-full flex-col bg-app md:flex-row">
       <IconRail rails={railsWithSections(sections)} selected={rail.id} onSelect={openRail} />
       <NavigationPanel
@@ -56,11 +59,21 @@ export function AppShell({ state, connection, theme }: AppShellProps) {
         <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-6 p-4 md:px-8 md:py-4">
           <DeviceBar identity={state.identity} />
           <CompactSectionTabs sections={railSections} selected={current.id} onSelect={setSelected} />
-          <SectionPage section={current.id} state={state} connection={connection} theme={theme} />
+          <SectionPage
+            section={current.id}
+            state={state}
+            connection={connection}
+            theme={theme}
+            onOpenSection={setSelected}
+          />
         </div>
       </main>
     </div>
   );
+  const { profiles, profileEditor } = state.capabilities;
+  return profiles
+    ? <ProfileEditingProvider reader={profiles} editor={profileEditor}>{shell}</ProfileEditingProvider>
+    : shell;
 }
 
 interface CompactSectionTabsProps {
@@ -100,22 +113,33 @@ interface SectionPageProps {
   readonly state: ConnectedState;
   readonly connection: KeyboardConnection;
   readonly theme: ThemeControl;
+  readonly onOpenSection: (section: SectionId) => void;
 }
 
-function SectionPage({ section, state, connection, theme }: SectionPageProps) {
+function SectionPage({ section, state, connection, theme, onOpenSection }: SectionPageProps) {
   const { capabilities, identity } = state;
   switch (section) {
     case "profiles":
+      return capabilities.profiles ? <ProfilesPage onOpenSection={onOpenSection} /> : null;
+    case "actuation":
       return capabilities.profiles
-        ? <ProfilesPage reader={capabilities.profiles} editor={capabilities.profileEditor} />
+        ? <ActuationPage physicalLayout={capabilities.physicalLayout} analogKeys={capabilities.analogKeys} />
         : null;
+    case "rapid-trigger":
+      return capabilities.profiles ? <RapidTriggerPage physicalLayout={capabilities.physicalLayout} /> : null;
     case "keymap":
       return capabilities.keymap
         ? <KeymapPage reader={capabilities.keymap} definitionLoader={capabilities.definitionLoader} />
         : null;
     case "lighting":
       return capabilities.lighting
-        ? <LightingPage reader={capabilities.lighting} editor={capabilities.lightingEditor} />
+        ? (
+          <LightingPage
+            reader={capabilities.lighting}
+            editor={capabilities.lightingEditor}
+            physicalLayout={capabilities.physicalLayout}
+          />
+        )
         : null;
     case "device-settings":
       return capabilities.deviceSettings

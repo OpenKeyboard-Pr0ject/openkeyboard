@@ -1,9 +1,12 @@
 import { hasCollection } from "../../hid/collections";
 import type { AnalogKeySource } from "../../keyboard/analog-keys";
 import type { KeyboardProfileEditor, KeyboardProfileReader } from "../../keyboard/keyboard-profile";
+import type { KeyboardLightingReader } from "../../keyboard/lighting";
+import type { PhysicalLayout } from "../../keyboard/physical-layout";
 import { decodeFirmwareVersion } from "../../protocol/wooting/wooting-codec";
 import { WootingCommandChannel } from "../../protocol/wooting/wooting-command-channel";
 import {
+  WOOTING_80HE_PRODUCT_ID,
   WOOTING_ANALOG_USAGE,
   WOOTING_ANALOG_USAGE_PAGE,
   WOOTING_CONFIG_USAGE,
@@ -14,14 +17,20 @@ import {
   WootingCommand,
 } from "../../protocol/wooting/wooting-constants";
 import type { AuthorizedDeviceLister, KeyboardDriver, KeyboardIdentity, KeyboardSession } from "../keyboard-driver";
+import { WOOTING_80HE_LAYOUT } from "./wooting-80he-layout";
 import { WootingAnalogKeySource } from "./wooting-analog-key-source";
+import { WootingLightingReader } from "./wooting-lighting-reader";
 import { WootingProfileEditor } from "./wooting-profile-editor";
 import { WootingProfileReader } from "./wooting-profile-reader";
+
+const PHYSICAL_LAYOUTS: ReadonlyMap<number, PhysicalLayout> = new Map([[WOOTING_80HE_PRODUCT_ID, WOOTING_80HE_LAYOUT]]);
 
 class WootingKeyboardSession implements KeyboardSession {
   readonly analogKeys: AnalogKeySource;
   readonly profiles: KeyboardProfileReader;
   readonly profileEditor?: KeyboardProfileEditor;
+  readonly lighting: KeyboardLightingReader;
+  readonly physicalLayout?: PhysicalLayout;
   private readonly commands: WootingCommandChannel;
 
   constructor(readonly device: HIDDevice, listAuthorizedDevices: AuthorizedDeviceLister) {
@@ -29,6 +38,8 @@ class WootingKeyboardSession implements KeyboardSession {
     this.analogKeys = new WootingAnalogKeySource(device, listAuthorizedDevices);
     const reader = new WootingProfileReader(this.commands);
     this.profiles = reader;
+    this.lighting = new WootingLightingReader(this.commands);
+    this.physicalLayout = PHYSICAL_LAYOUTS.get(device.productId);
     if (WOOTING_WRITE_VERIFIED_PRODUCT_IDS.has(device.productId)) {
       this.profileEditor = new WootingProfileEditor(this.commands, reader);
     }

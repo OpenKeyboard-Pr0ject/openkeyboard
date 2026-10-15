@@ -7,8 +7,9 @@ import {
 } from "../../../keyboard/lighting";
 import { describeError } from "../../../shared/describe-error";
 import { Button } from "../../components/Button";
+import { Card, SectionLabel } from "../../components/Card";
 import { Message } from "../../components/feedback";
-import { Field, RangeInput, SelectInput } from "../../components/inputs";
+import { RangeInput } from "../../components/inputs";
 import { EFFECT_LABELS } from "../../format/lighting-format";
 import { type EffectDraft, initialEffectDraft, initialEffectKind, lightingChange } from "./effect-draft";
 import { EffectOptions } from "./EffectOptions";
@@ -50,42 +51,96 @@ export function LightingForm({ current, editor, onSaved, onCancel }: LightingFor
   };
 
   return (
-    <form className="flex flex-col gap-4" onSubmit={(event) => event.preventDefault()}>
-      <Field label="Brightness">
-        <RangeInput
-          label="Brightness"
-          value={brightnessPercent}
-          range={BRIGHTNESS_PERCENT_RANGE}
-          valueLabel={`${brightnessPercent} %`}
-          disabled={busy}
-          onChange={setBrightnessPercent}
-        />
-      </Field>
-      <Field label="Effect">
-        <SelectInput
-          label="Effect"
-          value={effectDraft.kind}
-          options={editor.supportedEffects.map((kind) => ({ value: kind, label: EFFECT_LABELS[kind] }))}
-          disabled={busy}
-          onChange={(kind) => chooseEffect(kind as WritableLightingEffectKind)}
-        />
-      </Field>
-      <EffectOptions
-        draft={effectDraft}
-        maximumColors={editor.maximumEffectColors}
-        disabled={busy}
-        onChange={setEffectDraft}
-      />
-      <Message>Changes are saved on the keyboard and read back to confirm.</Message>
-      <div className="flex flex-wrap gap-2">
-        <Button variant="primary" disabled={busy} onClick={() => void save()}>
-          Save to keyboard
-        </Button>
-        <Button disabled={busy} onClick={onCancel}>
-          Cancel
-        </Button>
+    <form className="grid gap-4 md:grid-cols-2" onSubmit={(event) => event.preventDefault()}>
+      <Card title="Effects">
+        <div className="flex flex-col gap-5">
+          <div>
+            <SectionLabel>Global brightness</SectionLabel>
+            <RangeInput
+              label="Brightness"
+              value={brightnessPercent}
+              range={BRIGHTNESS_PERCENT_RANGE}
+              valueLabel={`${brightnessPercent} %`}
+              disabled={busy}
+              onChange={setBrightnessPercent}
+            />
+          </div>
+          <div>
+            <SectionLabel>Effect selection</SectionLabel>
+            <EffectTiles
+              effects={editor.supportedEffects}
+              selected={effectDraft.kind}
+              disabled={busy}
+              onSelect={chooseEffect}
+            />
+          </div>
+        </div>
+      </Card>
+      <Card title="Effect parameters">
+        <div className="flex flex-col gap-4">
+          {hasEffectOptions(effectDraft.kind) ? (
+            <EffectOptions
+              draft={effectDraft}
+              maximumColors={editor.maximumEffectColors}
+              disabled={busy}
+              onChange={setEffectDraft}
+            />
+          ) : <Message>This effect has no options.</Message>}
+        </div>
+      </Card>
+      <div className="flex flex-col gap-3 md:col-span-2">
+        <Message>Changes are saved on the keyboard and read back to confirm.</Message>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="primary" disabled={busy} onClick={() => void save()}>
+            Save to keyboard
+          </Button>
+          <Button disabled={busy} onClick={onCancel}>
+            Cancel
+          </Button>
+        </div>
+        {status && <Message>{status}</Message>}
       </div>
-      {status && <Message>{status}</Message>}
     </form>
+  );
+}
+
+const EFFECT_TILES_CLASSES = "grid grid-cols-2 gap-2 rounded-lg bg-sunken p-2 sm:grid-cols-3";
+const EFFECTS_WITHOUT_OPTIONS: ReadonlySet<WritableLightingEffectKind> = new Set(["off", "spectrum"]);
+
+function hasEffectOptions(kind: WritableLightingEffectKind): boolean {
+  return !EFFECTS_WITHOUT_OPTIONS.has(kind);
+}
+
+interface EffectTilesProps {
+  readonly effects: readonly WritableLightingEffectKind[];
+  readonly selected: WritableLightingEffectKind;
+  readonly disabled: boolean;
+  readonly onSelect: (kind: WritableLightingEffectKind) => void;
+}
+
+function EffectTiles({ effects, selected, disabled, onSelect }: EffectTilesProps) {
+  return (
+    <div role="radiogroup" aria-label="Effect" className={EFFECT_TILES_CLASSES}>
+      {effects.map((kind) => {
+        const isSelected = kind === selected;
+        return (
+          <button
+            key={kind}
+            type="button"
+            role="radio"
+            aria-checked={isSelected}
+            disabled={disabled}
+            onClick={() => onSelect(kind)}
+            className={[
+              "h-10 rounded-md px-3 text-left text-base transition",
+              "focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed",
+              isSelected ? "bg-accent font-bold text-on-accent" : "text-fg hover:bg-tint",
+            ].join(" ")}
+          >
+            {EFFECT_LABELS[kind]}
+          </button>
+        );
+      })}
+    </div>
   );
 }

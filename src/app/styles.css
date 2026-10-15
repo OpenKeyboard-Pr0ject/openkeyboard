@@ -27,6 +27,7 @@
   --app-negative: #c53030;
   --app-case: #2b2d31;
   --app-keycap: #3a3d42;
+  --app-keycap-highlight: #3d3a58;
   --app-keycap-legend: #f2f4f6;
   color-scheme: light;
 }
@@ -54,6 +55,7 @@
   --app-negative: #fc8181;
   --app-case: #2b2d31;
   --app-keycap: #3a3d42;
+  --app-keycap-highlight: #3d3a58;
   --app-keycap-legend: #f2f4f6;
   color-scheme: dark;
 }
@@ -81,6 +83,7 @@
   --color-negative: var(--app-negative);
   --color-case: var(--app-case);
   --color-keycap: var(--app-keycap);
+  --color-keycap-highlight: var(--app-keycap-highlight);
   --color-keycap-legend: var(--app-keycap-legend);
   --font-sans: "Nunito Sans Variable", "Nunito Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --animate-rgb-cycle: rgb-cycle 9s linear infinite;

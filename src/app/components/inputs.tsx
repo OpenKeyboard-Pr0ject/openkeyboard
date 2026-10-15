@@ -6,6 +6,9 @@ const CONTROL_CLASSES = [
   "disabled:cursor-not-allowed disabled:opacity-50",
 ].join(" ");
 
+const RANGE_VALUE_CLASSES =
+  "w-20 rounded-md bg-sunken px-2 py-1 text-right text-sm whitespace-nowrap tabular-nums text-strong";
+
 export interface SelectOption {
   readonly value: string;
   readonly label: string;
@@ -132,7 +135,7 @@ export function RangeInput({ value, range, onChange, disabled, label, valueLabel
         aria-label={label}
         onChange={(event) => onChange(event.target.valueAsNumber)}
       />
-      <output className="w-14 rounded-md bg-sunken px-2 py-1 text-right text-sm tabular-nums text-strong">
+      <output className={RANGE_VALUE_CLASSES}>
         {valueLabel}
       </output>
     </span>

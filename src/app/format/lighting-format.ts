@@ -8,7 +8,8 @@ export const EFFECT_LABELS: Readonly<Record<LightingEffectKind, string>> = {
   reactive: "Reactive",
   starlight: "Starlight",
   off: "Off",
-  unrecognized: "Unrecognized",
+  "per-key": "Per-key colors",
+  unrecognized: "Other effect",
 };
 
 export const DURATION_LABELS: Readonly<Record<EffectDuration, string>> = {

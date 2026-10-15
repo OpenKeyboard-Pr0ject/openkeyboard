@@ -131,5 +131,6 @@ function capabilitiesOf(session: KeyboardSession): KeyboardCapabilities {
     lightingEditor: session.lightingEditor,
     deviceSettings: session.deviceSettings,
     deviceSettingsEditor: session.deviceSettingsEditor,
+    physicalLayout: session.physicalLayout,
   };
 }

@@ -5,8 +5,10 @@ export const WOOTING_ANALOG_USAGE_PAGE = 0xff53;
 export const WOOTING_ANALOG_USAGE = 0x01;
 export const WOOTING_COMMAND_REPORT_ID = 0x01;
 
-export const WOOTING_HARDWARE_VERIFIED_PRODUCT_IDS: ReadonlySet<number> = new Set([0x1402]);
-export const WOOTING_WRITE_VERIFIED_PRODUCT_IDS: ReadonlySet<number> = new Set([0x1402]);
+export const WOOTING_80HE_PRODUCT_ID = 0x1402;
+
+export const WOOTING_HARDWARE_VERIFIED_PRODUCT_IDS: ReadonlySet<number> = new Set([WOOTING_80HE_PRODUCT_ID]);
+export const WOOTING_WRITE_VERIFIED_PRODUCT_IDS: ReadonlySet<number> = new Set([WOOTING_80HE_PRODUCT_ID]);
 
 export const WootingCommand = {
   getFirmwareVersion: 0x01,
@@ -16,6 +18,9 @@ export const WootingCommand = {
   getActuationProfile: 0x31,
   getPerKeyRapidTrigger: 0x3d,
   getProfileMetadata: 0x37,
+  getRgbUpperRows: 0x23,
+  getRgbLowerRows: 0x24,
+  getRgbCore: 0x32,
 } as const;
 
 export type WootingCommandId = (typeof WootingCommand)[keyof typeof WootingCommand];

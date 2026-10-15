@@ -13,7 +13,7 @@ export function Card({ title, description, actions, children, className = "" }: 
     <section className={`rounded-lg bg-panel p-5 md:p-6 ${className}`}>
       {(title || actions) && (
         <header className="mb-5 flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             {title && <h2 className="m-0 flex items-center gap-2 text-xl font-bold text-strong">{title}</h2>}
             {description && <p className="mt-1 mb-0 text-base text-fg">{description}</p>}
           </div>

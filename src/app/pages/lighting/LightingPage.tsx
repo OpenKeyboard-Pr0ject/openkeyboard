@@ -6,90 +6,141 @@ import {
   type KeyboardLightingReader,
   type LightingState,
 } from "../../../keyboard/lighting";
+import { matrixKeyId, type PhysicalLayout } from "../../../keyboard/physical-layout";
 import { describeError } from "../../../shared/describe-error";
 import { Button } from "../../components/Button";
-import { Card } from "../../components/Card";
-import { DetailList } from "../../components/DetailList";
-import { ColorSwatch, Message, Notice } from "../../components/feedback";
+import { Card, SectionLabel } from "../../components/Card";
+import { Callout, ColorSwatch, Message, Notice } from "../../components/feedback";
 import { RefreshIcon } from "../../components/icons";
+import { KeyboardCanvas } from "../../components/KeyboardCanvas";
 import { PageHeader } from "../../components/PageHeader";
 import { describeEffect } from "../../format/lighting-format";
 import { useLoadable } from "../../hooks/use-loadable";
 import { LightingForm } from "./LightingForm";
 
 const SAVED_NOTICE = "Saved to the keyboard and confirmed by reading it back.";
+const READ_ONLY_EXPLANATION = "OpenKeyboard reads the lighting with the same commands as the vendor's tool. "
+  + "Changing it is not supported on this keyboard yet.";
+const MAXIMUM_LISTED_COLORS = 16;
 
 interface LightingPageProps {
   readonly reader: KeyboardLightingReader;
   readonly editor: KeyboardLightingEditor | undefined;
+  readonly physicalLayout: PhysicalLayout | undefined;
 }
 
-export function LightingPage({ reader, editor }: LightingPageProps) {
+export function LightingPage({ reader, editor, physicalLayout }: LightingPageProps) {
   const lighting = useLoadable(() => reader.readLighting());
   const [editing, setEditing] = useState(false);
   const { state } = lighting;
+  const profileName = state.status === "ready" ? state.value.profileName : undefined;
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Lighting"
-        description="Backlight brightness and effect stored on the keyboard."
+        title="RGB Settings"
+        description={profileName
+          ? `Lighting of ${profileName}, the active profile.`
+          : "Backlight brightness and effect stored on the keyboard."}
         actions={
           <Button size="small" icon={<RefreshIcon width={14} height={14} />} onClick={lighting.reload}>
             Refresh
           </Button>
         }
       />
-      <Card>
-        {state.status === "loading" && <Message>Reading lighting…</Message>}
-        {state.status === "failed" && <Message>Could not read the lighting: {describeError(state.error)}</Message>}
-        {state.status === "ready" && editing && editor && (
-          <LightingForm
-            current={state.value}
-            editor={editor}
-            onSaved={(saved) => {
-              setEditing(false);
-              lighting.show(saved, SAVED_NOTICE);
-            }}
-            onCancel={() => setEditing(false)}
-          />
-        )}
-        {state.status === "ready" && !(editing && editor) && (
-          <div className="flex flex-col gap-5">
-            {state.notice && <Notice>{state.notice}</Notice>}
-            <LightingDetails state={state.value} />
-            {editor && (
-              <div>
-                <Button variant="primary" onClick={() => setEditing(true)}>
-                  Change lighting
-                </Button>
-              </div>
-            )}
+      {state.status === "loading" && <Card><Message>Reading lighting…</Message></Card>}
+      {state.status === "failed" && (
+        <Card><Message>Could not read the lighting: {describeError(state.error)}</Message></Card>
+      )}
+      {state.status === "ready" && (
+        <>
+          {state.notice && <Notice>{state.notice}</Notice>}
+          <KeyColorsPicture state={state.value} physicalLayout={physicalLayout} />
+          {!editor && <Callout tone="neutral" title="Read only">{READ_ONLY_EXPLANATION}</Callout>}
+          {editing && editor ? (
+            <LightingForm
+              current={state.value}
+              editor={editor}
+              onSaved={(saved) => {
+                setEditing(false);
+                lighting.show(saved, SAVED_NOTICE);
+              }}
+              onCancel={() => setEditing(false)}
+            />
+          ) : (
+            <LightingOverview state={state.value} onEdit={editor ? () => setEditing(true) : undefined} />
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+interface KeyColorsPictureProps {
+  readonly state: LightingState;
+  readonly physicalLayout: PhysicalLayout | undefined;
+}
+
+function KeyColorsPicture({ state, physicalLayout }: KeyColorsPictureProps) {
+  if (!physicalLayout || !state.keyColors) return null;
+  const colorsByKey = new Map(state.keyColors.map((keyColor) => [matrixKeyId(keyColor), colorToHex(keyColor.color)]));
+  return (
+    <KeyboardCanvas
+      layout={physicalLayout}
+      label="Key colors"
+      appearanceOf={(key) => ({ fill: colorsByKey.get(matrixKeyId(key)) })}
+    />
+  );
+}
+
+interface LightingOverviewProps {
+  readonly state: LightingState;
+  readonly onEdit: (() => void) | undefined;
+}
+
+function LightingOverview({ state, onEdit }: LightingOverviewProps) {
+  const colors = listedColors(state);
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <Card title="Colours">
+        {colors.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {colors.map((color) => (
+              <span key={color} className="flex items-center gap-2 rounded-md bg-sunken px-2 py-1 text-sm text-fg">
+                <ColorSwatch color={color} title={color} />
+                {color}
+              </span>
+            ))}
           </div>
-        )}
+        ) : <Message>This effect uses no fixed colors.</Message>}
+      </Card>
+      <Card
+        title="Effects"
+        actions={onEdit && <Button variant="primary" size="small" onClick={onEdit}>Change lighting</Button>}
+      >
+        <div className="flex flex-col gap-4">
+          <div>
+            <SectionLabel>Global brightness</SectionLabel>
+            <div className="flex items-center gap-3">
+              <span className="h-1.5 w-60 max-w-full overflow-hidden rounded-full bg-sunken">
+                <span className="block h-full bg-accent" style={{ width: `${state.brightnessPercent}%` }} />
+              </span>
+              <span className="text-base font-semibold tabular-nums text-strong">{state.brightnessPercent} %</span>
+            </div>
+          </div>
+          <div>
+            <SectionLabel>Effect</SectionLabel>
+            <p className="m-0 text-base text-strong">{describeEffect(state.effect)}</p>
+          </div>
+        </div>
       </Card>
     </div>
   );
 }
 
-function LightingDetails({ state }: { readonly state: LightingState }) {
-  const colors = effectColors(state.effect).map(colorToHex);
-  return (
-    <DetailList
-      details={[
-        { label: "Brightness", value: `${state.brightnessPercent} %` },
-        { label: "Effect", value: describeEffect(state.effect) },
-        ...(colors.length > 0
-          ? [{
-            label: "Colors",
-            value: (
-              <span className="flex flex-wrap items-center gap-1.5">
-                {colors.map((color, index) => <ColorSwatch key={`${color}-${index}`} color={color} title={color} />)}
-              </span>
-            ),
-          }]
-          : []),
-      ]}
-    />
-  );
+function listedColors(state: LightingState): string[] {
+  const colors = state.keyColors
+    ? state.keyColors.map((keyColor) => colorToHex(keyColor.color))
+    : effectColors(state.effect).map(colorToHex);
+  return [...new Set(colors)].slice(0, MAXIMUM_LISTED_COLORS);
 }

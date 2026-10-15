@@ -244,10 +244,35 @@ export function AlertIcon(props: IconProps) {
   );
 }
 
+export function InfoIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5M12 8h.01" />
+    </Icon>
+  );
+}
+
 export function SpinnerIcon(props: IconProps) {
   return (
     <Icon {...props}>
       <path d="M12 3a9 9 0 1 0 9 9" />
+    </Icon>
+  );
+}
+
+export function ActuationIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12 3v11M8 10l4 4 4-4M5 20h14" />
+    </Icon>
+  );
+}
+
+export function RapidTriggerIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M3 17l4-10 4 10 4-10 4 10" />
     </Icon>
   );
 }

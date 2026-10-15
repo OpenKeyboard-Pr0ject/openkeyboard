@@ -1,3 +1,5 @@
+import type { MatrixPosition } from "./physical-layout";
+
 export interface RgbColor {
   readonly red: number;
   readonly green: number;
@@ -16,17 +18,24 @@ export type LightingEffect =
   | { readonly kind: "wave"; readonly direction: WaveDirection }
   | { readonly kind: "reactive"; readonly color: RgbColor; readonly duration: EffectDuration }
   | { readonly kind: "starlight"; readonly colors: readonly RgbColor[]; readonly duration: EffectDuration }
+  | { readonly kind: "per-key" }
   | { readonly kind: "unrecognized"; readonly description: string };
 
 export type LightingEffectKind = LightingEffect["kind"];
 
-export type WritableLightingEffect = Exclude<LightingEffect, { kind: "unrecognized" }>;
+export type WritableLightingEffect = Exclude<LightingEffect, { kind: "unrecognized" } | { kind: "per-key" }>;
 
 export type WritableLightingEffectKind = WritableLightingEffect["kind"];
+
+export interface KeyColor extends MatrixPosition {
+  readonly color: RgbColor;
+}
 
 export interface LightingState {
   readonly brightnessPercent: number;
   readonly effect: LightingEffect;
+  readonly keyColors?: readonly KeyColor[];
+  readonly profileName?: string;
 }
 
 export interface LightingChange {

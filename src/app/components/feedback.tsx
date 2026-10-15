@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AlertIcon, CheckIcon } from "./icons";
+import { AlertIcon, CheckIcon, InfoIcon } from "./icons";
 
 type Tone = "neutral" | "accent" | "positive" | "warning" | "negative";
 
@@ -27,6 +27,14 @@ const CALLOUT_ICON_CLASSES: Readonly<Record<Tone, string>> = {
   negative: "text-negative",
 };
 
+const CALLOUT_ICONS: Readonly<Record<Tone, typeof AlertIcon>> = {
+  neutral: InfoIcon,
+  accent: InfoIcon,
+  positive: CheckIcon,
+  warning: AlertIcon,
+  negative: AlertIcon,
+};
+
 const BADGE_CLASSES = "inline-flex items-center rounded-lg px-2 py-0.5 text-xs leading-4 font-bold whitespace-nowrap";
 
 export function Badge({ tone = "neutral", children }: { readonly tone?: Tone; readonly children: ReactNode }) {
@@ -52,7 +60,7 @@ interface CalloutProps {
 }
 
 export function Callout({ tone = "warning", title, children }: CalloutProps) {
-  const CalloutIcon = tone === "positive" ? CheckIcon : AlertIcon;
+  const CalloutIcon = CALLOUT_ICONS[tone];
   const role = tone === "negative" ? "alert" : "status";
   return (
     <div role={role} className="flex gap-3 rounded-lg bg-sunken px-4 py-3 text-left">

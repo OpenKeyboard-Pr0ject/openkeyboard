@@ -2,6 +2,8 @@ import type { KeyboardCapabilities } from "../../drivers/keyboard-driver";
 
 export type SectionId =
   | "profiles"
+  | "actuation"
+  | "rapid-trigger"
   | "keymap"
   | "lighting"
   | "device-settings"
@@ -9,7 +11,13 @@ export type SectionId =
   | "device"
   | "interface"
   | "about";
-export type SectionGroup = "Configuration" | "Monitoring" | "Keyboard" | "Interface" | "OpenKeyboard";
+export type SectionGroup =
+  | "Profiles"
+  | "Keyboard Configuration"
+  | "Monitoring"
+  | "Keyboard"
+  | "Interface"
+  | "OpenKeyboard";
 export type RailId = "keyboard" | "settings" | "help";
 
 export interface Section {
@@ -26,17 +34,33 @@ export interface Rail {
 }
 
 export const RAILS: readonly Rail[] = [
-  { id: "keyboard", label: "Keyboard", title: "Keyboard Configuration", groups: ["Configuration", "Monitoring"] },
+  {
+    id: "keyboard",
+    label: "Keyboard",
+    title: "Keyboard Configuration",
+    groups: ["Profiles", "Keyboard Configuration", "Monitoring"],
+  },
   { id: "settings", label: "Settings", title: "Settings", groups: ["Keyboard", "Interface"] },
   { id: "help", label: "Help", title: "Help", groups: ["OpenKeyboard"] },
 ];
 
 const CAPABILITY_SECTIONS: ReadonlyArray<readonly [Section, (capabilities: KeyboardCapabilities) => boolean]> = [
-  [{ id: "profiles", label: "Profiles", group: "Configuration" }, (capabilities) => Boolean(capabilities.profiles)],
-  [{ id: "keymap", label: "Keymap", group: "Configuration" }, (capabilities) => Boolean(capabilities.keymap)],
-  [{ id: "lighting", label: "Lighting", group: "Configuration" }, (capabilities) => Boolean(capabilities.lighting)],
+  [{ id: "profiles", label: "My Profiles", group: "Profiles" }, (capabilities) => Boolean(capabilities.profiles)],
   [
-    { id: "device-settings", label: "Battery and performance", group: "Configuration" },
+    { id: "actuation", label: "Actuation Point", group: "Keyboard Configuration" },
+    (capabilities) => Boolean(capabilities.profiles),
+  ],
+  [
+    { id: "rapid-trigger", label: "Rapid Trigger", group: "Keyboard Configuration" },
+    (capabilities) => Boolean(capabilities.profiles),
+  ],
+  [
+    { id: "lighting", label: "RGB Settings", group: "Keyboard Configuration" },
+    (capabilities) => Boolean(capabilities.lighting),
+  ],
+  [{ id: "keymap", label: "Keymap", group: "Keyboard Configuration" }, (capabilities) => Boolean(capabilities.keymap)],
+  [
+    { id: "device-settings", label: "Battery and performance", group: "Keyboard Configuration" },
     (capabilities) => Boolean(capabilities.deviceSettings),
   ],
   [

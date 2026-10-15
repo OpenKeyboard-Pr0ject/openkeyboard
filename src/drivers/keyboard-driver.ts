@@ -3,6 +3,7 @@ import type { KeyboardDeviceSettingsEditor, KeyboardDeviceSettingsReader } from 
 import type { KeyboardProfileEditor, KeyboardProfileReader } from "../keyboard/keyboard-profile";
 import type { KeyboardDefinitionLoader, KeymapReader } from "../keyboard/keymap";
 import type { KeyboardLightingEditor, KeyboardLightingReader } from "../keyboard/lighting";
+import type { PhysicalLayout } from "../keyboard/physical-layout";
 
 export interface KeyboardIdentity {
   readonly vendorName: string;
@@ -23,6 +24,7 @@ export interface KeyboardCapabilities {
   readonly lightingEditor?: KeyboardLightingEditor;
   readonly deviceSettings?: KeyboardDeviceSettingsReader;
   readonly deviceSettingsEditor?: KeyboardDeviceSettingsEditor;
+  readonly physicalLayout?: PhysicalLayout;
 }
 
 export interface KeyboardSession extends KeyboardCapabilities {
