@@ -1,4 +1,4 @@
-import type { ReactNode, SVGProps } from "react";
+import { type ReactNode, type SVGProps, useId } from "react";
 
 type IconProps = SVGProps<SVGSVGElement>;
 
@@ -21,32 +21,39 @@ function Icon({ children, ...props }: IconProps & { children: ReactNode }) {
   );
 }
 
-export function LogoIcon() {
+const LOGO_KEY_POSITIONS: ReadonlyArray<readonly [number, number, number]> = [
+  [42, 78, 28],
+  [78, 78, 28],
+  [114, 78, 28],
+  [150, 78, 28],
+  [186, 78, 28],
+  [42, 114, 28],
+  [78, 114, 28],
+  [150, 114, 28],
+  [186, 114, 28],
+  [42, 150, 28],
+  [78, 150, 100],
+  [186, 150, 28],
+];
+
+export function LogoIcon({ size = 36 }: { readonly size?: number }) {
+  const gradientId = useId();
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="512" height="512">
-		<defs>
-			<linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-			<stop offset="0" stop-color="#7C5CFF"/>
-			<stop offset="1" stop-color="#22D3EE"/>
-			</linearGradient>
-		</defs>
-		<rect x="16" y="58" width="224" height="140" rx="30" fill="#15171C"/>
-		<g fill="#fff" fill-opacity=".9">
-			<rect x="42" y="78" width="28" height="28" rx="7"/>
-			<rect x="78" y="78" width="28" height="28" rx="7"/>
-			<rect x="114" y="78" width="28" height="28" rx="7"/>
-			<rect x="150" y="78" width="28" height="28" rx="7"/>
-			<rect x="186" y="78" width="28" height="28" rx="7"/>
-			<rect x="42" y="114" width="28" height="28" rx="7"/>
-			<rect x="78" y="114" width="28" height="28" rx="7"/>
-			<rect x="150" y="114" width="28" height="28" rx="7"/>
-			<rect x="186" y="114" width="28" height="28" rx="7"/>
-			<rect x="42" y="150" width="28" height="28" rx="7"/>
-			<rect x="78" y="150" width="100" height="28" rx="7"/>
-			<rect x="186" y="150" width="28" height="28" rx="7"/>
-		</g>
-		<rect x="114" y="114" width="28" height="28" rx="7" fill="url(#g)"/>
-	</svg>
+    <svg viewBox="0 0 256 256" width={size} height={size} aria-hidden="true">
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#7C5CFF" />
+          <stop offset="1" stopColor="#22D3EE" />
+        </linearGradient>
+      </defs>
+      <rect x="16" y="58" width="224" height="140" rx="30" fill="#15171C" />
+      <g fill="#fff" fillOpacity=".9">
+        {LOGO_KEY_POSITIONS.map(([x, y, width]) => (
+          <rect key={`${x}-${y}`} x={x} y={y} width={width} height="28" rx="7" />
+        ))}
+      </g>
+      <rect x="114" y="114" width="28" height="28" rx="7" fill={`url(#${gradientId})`} />
+    </svg>
   );
 }
 
@@ -146,6 +153,109 @@ export function PlugIcon(props: IconProps) {
   return (
     <Icon {...props}>
       <path d="M9 2v6M15 2v6M6 8h12v3a6 6 0 0 1-12 0V8ZM12 17v5" />
+    </Icon>
+  );
+}
+
+export function KeyboardIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="2" y="6" width="20" height="12" rx="2" />
+      <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8" />
+    </Icon>
+  );
+}
+
+export function SettingsIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 7h9M17 7h3M4 17h3M11 17h9" />
+      <circle cx="15" cy="7" r="2" />
+      <circle cx="9" cy="17" r="2" />
+    </Icon>
+  );
+}
+
+export function HelpIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.5 9a2.5 2.5 0 0 1 4.9.8c0 1.7-2.4 2.2-2.4 3.7M12 17h.01" />
+    </Icon>
+  );
+}
+
+export function InterfaceIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M3 9h18M9 9v11" />
+    </Icon>
+  );
+}
+
+export function BookIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Z" />
+      <path d="M4 19a2 2 0 0 1 2-2h13M8 7h7" />
+    </Icon>
+  );
+}
+
+const GITHUB_MARK_PATH = [
+  "M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.4-1.2-1.1-1.5-1.1-1.5",
+  "-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.5 2.4 1.1 2.9.8.1-.6.4-1.1.6-1.3-2.2-.3-4.6-1.1-4.6-5",
+  "0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.8 1a9.6 9.6 0 0 1 5 0c1.9-1.3 2.8-1 2.8-1",
+  ".5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.9-2.4 4.7-4.6 5 .4.3.7.9.7 1.9v2.8c0 .3.2.6.7.5A10 10 0 0 0 12 2Z",
+].join(" ");
+
+export function GitHubIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true" {...props}>
+      <path d={GITHUB_MARK_PATH} />
+    </svg>
+  );
+}
+
+export function IssueIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 8v5M12 16h.01" />
+    </Icon>
+  );
+}
+
+export function CheckIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="m5 12.5 4.5 4.5L19 7.5" />
+    </Icon>
+  );
+}
+
+export function AlertIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M10.3 3.9 2.4 17.6A2 2 0 0 0 4.1 20.6h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+      <path d="M12 9v4M12 17h.01" />
+    </Icon>
+  );
+}
+
+export function SpinnerIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12 3a9 9 0 1 0 9 9" />
+    </Icon>
+  );
+}
+
+export function ArrowRightIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M5 12h14M13 6l6 6-6 6" />
     </Icon>
   );
 }

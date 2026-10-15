@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 interface CardProps {
-  readonly title?: string;
+  readonly title?: ReactNode;
   readonly description?: string;
   readonly actions?: ReactNode;
   readonly children: ReactNode;
@@ -10,17 +10,21 @@ interface CardProps {
 
 export function Card({ title, description, actions, children, className = "" }: CardProps) {
   return (
-    <section className={`rounded-2xl border border-line bg-panel p-5 shadow-sm ${className}`}>
+    <section className={`rounded-lg bg-panel p-5 md:p-6 ${className}`}>
       {(title || actions) && (
-        <header className="mb-4 flex items-start justify-between gap-4">
-          <div>
-            {title && <h2 className="text-sm font-semibold text-fg">{title}</h2>}
-            {description && <p className="mt-1 text-sm text-muted">{description}</p>}
+        <header className="mb-5 flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            {title && <h2 className="m-0 flex items-center gap-2 text-xl font-bold text-strong">{title}</h2>}
+            {description && <p className="mt-1 mb-0 text-base text-fg">{description}</p>}
           </div>
-          {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+          {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
         </header>
       )}
       {children}
     </section>
   );
+}
+
+export function SectionLabel({ children }: { readonly children: ReactNode }) {
+  return <h3 className="mt-0 mb-2 text-sm font-bold tracking-wide text-fg uppercase">{children}</h3>;
 }

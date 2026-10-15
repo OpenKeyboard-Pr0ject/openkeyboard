@@ -2,6 +2,7 @@ import { useState } from "react";
 import { keyLabel } from "../../../keyboard/hid-key-names";
 import type { KeyboardProfile, SettingRange } from "../../../keyboard/keyboard-profile";
 import { Button } from "../../components/Button";
+import { SectionLabel } from "../../components/Card";
 import { NumberInput, SelectInput, type SelectOption } from "../../components/inputs";
 import {
   type ActuationMode,
@@ -50,7 +51,7 @@ export function KeySettingsEditor({ profile, drafts, ranges, disabled, onChange 
 
   return (
     <section className="flex flex-col gap-3">
-      <h3 className="m-0 text-xs font-semibold tracking-wide text-muted uppercase">Per-key settings</h3>
+      <SectionLabel>Per-key settings</SectionLabel>
       <div className="flex flex-col gap-2">
         {drafts.map((draft, index) => (
           <KeySettingsRow
@@ -89,8 +90,8 @@ interface KeySettingsRowProps {
 function KeySettingsRow({ draft, ranges, disabled, onChange }: KeySettingsRowProps) {
   const label = keyLabel(draft.key);
   return (
-    <div className="grid grid-cols-[5rem_1fr] items-center gap-x-3 gap-y-2 rounded-xl border border-line bg-raised p-3">
-      <span className="row-span-3 self-start pt-2 text-sm font-semibold text-fg">{label}</span>
+    <div className="grid grid-cols-[5rem_1fr] items-center gap-x-3 gap-y-2 rounded-lg bg-sunken p-3">
+      <span className="row-span-3 self-start pt-2 text-base font-bold text-strong">{label}</span>
       <div className="flex items-center gap-2">
         <SelectInput
           className="min-w-0 flex-1"

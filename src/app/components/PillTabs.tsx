@@ -25,11 +25,11 @@ export function PillTabs<Value extends string | number>({ tabs, selected, onSele
             aria-selected={isSelected}
             onClick={() => onSelect(tab.value)}
             className={[
-              "inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-sm transition",
+              "inline-flex h-10 items-center gap-2 rounded-lg border px-4 text-base transition",
               "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
               isSelected
-                ? "border-accent bg-accent-soft font-semibold text-fg"
-                : "border-line bg-panel text-muted hover:bg-raised hover:text-fg",
+                ? "border-accent bg-tint font-bold text-strong"
+                : "border-transparent bg-subtle text-fg hover:bg-tint hover:text-strong",
             ].join(" ")}
           >
             {tab.label}

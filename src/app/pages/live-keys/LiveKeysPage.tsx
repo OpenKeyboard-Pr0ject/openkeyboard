@@ -86,9 +86,9 @@ function useAnalogKeys(source: AnalogKeySource): AnalogKeysState {
 function KeyMeter({ reading }: { readonly reading: AnalogKeyReading }) {
   const percent = Math.round(reading.depth * 100);
   return (
-    <div className="grid grid-cols-[6rem_1fr_3rem] items-center gap-3 text-sm">
-      <span className="truncate font-semibold text-fg">{keyLabel(reading)}</span>
-      <span className="h-2.5 overflow-hidden rounded-full bg-raised">
+    <div className="grid grid-cols-[6rem_1fr_3rem] items-center gap-3 text-base">
+      <span className="truncate font-bold text-strong">{keyLabel(reading)}</span>
+      <span className="h-2.5 overflow-hidden rounded-full bg-sunken">
         <span className="block h-full rounded-full bg-accent" style={{ width: `${percent}%` }} />
       </span>
       <span className="text-right tabular-nums text-muted">{percent}%</span>

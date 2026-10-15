@@ -5,7 +5,15 @@ import {
   pollingRateOptions,
 } from "../../src/app/pages/device-settings/device-settings-draft";
 import { keyGroupDetails, rapidTriggerDetails } from "../../src/app/format/profile-format";
-import { sectionsFor } from "../../src/app/layout/sections";
+import {
+  navigationFor,
+  RAILS,
+  railOf,
+  railsWithSections,
+  sectionsFor,
+  sectionsOfRail,
+} from "../../src/app/layout/sections";
+import { showcaseHue, showcaseLayout } from "../../src/app/screens/showcase-layout";
 import {
   readStoredPreference,
   resolveTheme,
@@ -65,6 +73,72 @@ describe("sectionsFor", () => {
     const wooting = { analogKeys: {}, profiles: {} } as unknown as KeyboardCapabilities;
 
     expect(sectionsFor(wooting).map((section) => section.id)).toEqual(["profiles", "live-keys", "device"]);
+  });
+});
+
+describe("navigation rails", () => {
+  const razer = { lighting: {}, deviceSettings: {} } as unknown as KeyboardCapabilities;
+
+  it("adds the interface and about pages after the keyboard sections", () => {
+    expect(navigationFor(razer).map((section) => section.id)).toEqual([
+      "lighting",
+      "device-settings",
+      "device",
+      "interface",
+      "about",
+    ]);
+  });
+
+  it("puts each section on one rail", () => {
+    const railIds = navigationFor(razer).map((section) => [section.id, railOf(section).id]);
+
+    expect(railIds).toEqual([
+      ["lighting", "keyboard"],
+      ["device-settings", "keyboard"],
+      ["device", "settings"],
+      ["interface", "settings"],
+      ["about", "help"],
+    ]);
+  });
+
+  it("lists the sections of a rail in order", () => {
+    const settings = RAILS.find((rail) => rail.id === "settings")!;
+
+    expect(sectionsOfRail(navigationFor(razer), settings).map((section) => section.id)).toEqual([
+      "device",
+      "interface",
+    ]);
+  });
+
+  it("hides the keyboard rail when the keyboard offers no configuration", () => {
+    const bare = {} as KeyboardCapabilities;
+
+    expect(railsWithSections(navigationFor(bare)).map((rail) => rail.id)).toEqual(["settings", "help"]);
+  });
+});
+
+describe("keyboard showcase", () => {
+  const layout = showcaseLayout();
+
+  it("draws a tenkeyless board of 87 keys", () => {
+    expect(layout.keys).toHaveLength(87);
+    expect([layout.width, layout.height]).toEqual([18.25, 6.25]);
+  });
+
+  it("fills the main block rows to the same width", () => {
+    const rowEnds = [1.25, 2.25, 3.25, 4.25, 5.25].map((y) => {
+      const row = layout.keys.filter((key) => key.y === y && key.x < 15);
+      return Math.max(...row.map((key) => key.x + key.width));
+    });
+
+    expect(rowEnds).toEqual([15, 15, 15, 15, 15]);
+  });
+
+  it("colors keys from left to right like a rainbow", () => {
+    const escape = layout.keys.find((key) => key.label === "Esc")!;
+    const pause = layout.keys.find((key) => key.label === "Pause")!;
+
+    expect(showcaseHue(escape, layout)).toBeLessThan(showcaseHue(pause, layout));
   });
 });
 

@@ -1,4 +1,5 @@
 import type { KeyboardProfile } from "../../../keyboard/keyboard-profile";
+import { SectionLabel } from "../../components/Card";
 import { DetailList, type Detail } from "../../components/DetailList";
 import {
   formatMillimeters,
@@ -33,7 +34,7 @@ function KeyGroup({ title, details }: { readonly title: string; readonly details
   if (details.length === 0) return null;
   return (
     <div>
-      <h3 className="mt-0 mb-2 text-xs font-semibold tracking-wide text-muted uppercase">{title}</h3>
+      <SectionLabel>{title}</SectionLabel>
       <DetailList details={details} />
     </div>
   );

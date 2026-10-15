@@ -5,60 +5,91 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --app-background: #f3f4f7;
-  --app-sidebar: #ffffff;
+  --app-backdrop: #f6f7f8;
+  --app-background: #eef0f2;
+  --app-rail: #e2e5e9;
   --app-panel: #ffffff;
-  --app-panel-raised: #f1f3f6;
-  --app-line: #e0e3e9;
-  --app-foreground: #15181d;
-  --app-muted: #5d6573;
-  --app-accent: #2f6fed;
-  --app-accent-soft: #e5edfd;
-  --app-accent-foreground: #ffffff;
+  --app-sunken: #f1f3f5;
+  --app-subtle: rgba(60, 70, 85, 0.06);
+  --app-tint: rgba(60, 70, 85, 0.1);
+  --app-tint-strong: rgba(60, 70, 85, 0.16);
+  --app-line: rgba(20, 24, 28, 0.1);
+  --app-strong: #15181b;
+  --app-foreground: #2c3138;
+  --app-muted: #5d6570;
+  --app-faint: #8a929b;
+  --app-accent: #ffd45c;
+  --app-accent-ink: #8a6100;
+  --app-accent-soft: rgba(255, 196, 0, 0.18);
+  --app-accent-foreground: #181a1b;
   --app-positive: #1f9d55;
-  --app-warning: #c98a00;
-  --app-negative: #d64545;
+  --app-warning: #b7791f;
+  --app-negative: #c53030;
+  --app-case: #2b2d31;
+  --app-keycap: #3a3d42;
+  --app-keycap-legend: #f2f4f6;
   color-scheme: light;
 }
 
 .dark {
-  --app-background: #111214;
-  --app-sidebar: #18191c;
-  --app-panel: #1c1d21;
-  --app-panel-raised: #25262b;
-  --app-line: #2c2e34;
-  --app-foreground: #eef0f4;
-  --app-muted: #9aa1ad;
-  --app-accent: #5b8cff;
-  --app-accent-soft: #1f2a44;
-  --app-accent-foreground: #ffffff;
-  --app-positive: #3ccf7e;
-  --app-warning: #f0b429;
-  --app-negative: #f26b6b;
+  --app-backdrop: #121212;
+  --app-background: #181a1b;
+  --app-rail: #111213;
+  --app-panel: #222426;
+  --app-sunken: #181a1b;
+  --app-subtle: rgba(175, 189, 203, 0.08);
+  --app-tint: rgba(182, 196, 210, 0.16);
+  --app-tint-strong: rgba(182, 196, 210, 0.24);
+  --app-line: rgba(255, 255, 255, 0.08);
+  --app-strong: #e8ebed;
+  --app-foreground: #ccd1d6;
+  --app-muted: #a6adb5;
+  --app-faint: #7c848d;
+  --app-accent: #ffd45c;
+  --app-accent-ink: #ffd45c;
+  --app-accent-soft: rgba(255, 212, 92, 0.14);
+  --app-accent-foreground: #181a1b;
+  --app-positive: #48bb78;
+  --app-warning: #f6ad55;
+  --app-negative: #fc8181;
+  --app-case: #2b2d31;
+  --app-keycap: #3a3d42;
+  --app-keycap-legend: #f2f4f6;
   color-scheme: dark;
 }
 
 @theme inline {
+  --color-backdrop: var(--app-backdrop);
   --color-app: var(--app-background);
-  --color-sidebar: var(--app-sidebar);
+  --color-rail: var(--app-rail);
   --color-panel: var(--app-panel);
-  --color-raised: var(--app-panel-raised);
+  --color-sunken: var(--app-sunken);
+  --color-subtle: var(--app-subtle);
+  --color-tint: var(--app-tint);
+  --color-tint-strong: var(--app-tint-strong);
   --color-line: var(--app-line);
+  --color-strong: var(--app-strong);
   --color-fg: var(--app-foreground);
   --color-muted: var(--app-muted);
+  --color-faint: var(--app-faint);
   --color-accent: var(--app-accent);
+  --color-accent-ink: var(--app-accent-ink);
   --color-accent-soft: var(--app-accent-soft);
   --color-on-accent: var(--app-accent-foreground);
   --color-positive: var(--app-positive);
   --color-warning: var(--app-warning);
   --color-negative: var(--app-negative);
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --color-case: var(--app-case);
+  --color-keycap: var(--app-keycap);
+  --color-keycap-legend: var(--app-keycap-legend);
+  --font-sans: "Nunito Sans Variable", "Nunito Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --animate-rgb-cycle: rgb-cycle 9s linear infinite;
+  --animate-spin-slow: spin 1.2s linear infinite;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not(.light) {
-    --app-background: #111214;
-    color-scheme: dark;
+@keyframes rgb-cycle {
+  to {
+    filter: hue-rotate(360deg);
   }
 }
 
@@ -73,5 +104,15 @@ body {
   background: var(--app-background);
   color: var(--app-foreground);
   font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --app-background: #181a1b;
+    --app-backdrop: #121212;
+    color-scheme: dark;
+  }
 }

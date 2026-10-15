@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 const CONTROL_CLASSES = [
-  "h-9 rounded-lg border border-line bg-raised px-3 text-sm text-fg",
+  "h-10 rounded-md border border-line bg-sunken px-3 text-base text-strong",
   "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent",
   "disabled:cursor-not-allowed disabled:opacity-50",
 ].join(" ");
@@ -18,8 +18,8 @@ interface FieldProps {
 
 export function Field({ label, children }: FieldProps) {
   return (
-    <label className="flex items-center justify-between gap-4 text-sm">
-      <span className="text-muted">{label}</span>
+    <label className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-base">
+      <span className="text-fg">{label}</span>
       {children}
     </label>
   );
@@ -96,13 +96,13 @@ export function Toggle({ checked, onChange, disabled, label }: ToggleProps) {
         "relative h-6 w-11 shrink-0 rounded-full transition",
         "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
         "disabled:cursor-not-allowed disabled:opacity-50",
-        checked ? "bg-accent" : "bg-line",
+        checked ? "bg-accent" : "bg-tint-strong",
       ].join(" ")}
     >
       <span
         className={[
-          "absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform",
-          checked ? "translate-x-5" : "translate-x-0",
+          "absolute top-0.5 left-0.5 h-5 w-5 rounded-full shadow transition-transform",
+          checked ? "translate-x-5 bg-on-accent" : "translate-x-0 bg-faint",
         ].join(" ")}
       />
     </button>
@@ -120,7 +120,7 @@ interface RangeInputProps {
 
 export function RangeInput({ value, range, onChange, disabled, label, valueLabel }: RangeInputProps) {
   return (
-    <span className="flex w-64 max-w-full items-center gap-3">
+    <span className="flex w-72 max-w-full items-center gap-3">
       <input
         type="range"
         className="h-1.5 min-w-0 flex-1 cursor-pointer accent-[var(--app-accent)] disabled:cursor-not-allowed"
@@ -132,7 +132,9 @@ export function RangeInput({ value, range, onChange, disabled, label, valueLabel
         aria-label={label}
         onChange={(event) => onChange(event.target.valueAsNumber)}
       />
-      <output className="w-12 text-right text-sm tabular-nums text-muted">{valueLabel}</output>
+      <output className="w-14 rounded-md bg-sunken px-2 py-1 text-right text-sm tabular-nums text-strong">
+        {valueLabel}
+      </output>
     </span>
   );
 }
@@ -148,11 +150,59 @@ export function ColorInput({ value, onChange, disabled, label }: ColorInputProps
   return (
     <input
       type="color"
-      className="h-9 w-12 cursor-pointer rounded-lg border border-line bg-raised p-1 disabled:cursor-not-allowed"
+      className="h-10 w-14 cursor-pointer rounded-md border border-line bg-sunken p-1 disabled:cursor-not-allowed"
       value={value}
       disabled={disabled}
       aria-label={label}
       onChange={(event) => onChange(event.target.value)}
     />
+  );
+}
+
+export interface RadioChoice<Value extends string> {
+  readonly value: Value;
+  readonly label: string;
+  readonly icon?: ReactNode;
+}
+
+interface RadioListProps<Value extends string> {
+  readonly label: string;
+  readonly choices: readonly RadioChoice<Value>[];
+  readonly selected: Value;
+  readonly onSelect: (value: Value) => void;
+}
+
+export function RadioList<Value extends string>({ label, choices, selected, onSelect }: RadioListProps<Value>) {
+  return (
+    <div role="radiogroup" aria-label={label} className="flex flex-col gap-2">
+      {choices.map((choice) => {
+        const isSelected = choice.value === selected;
+        return (
+          <button
+            key={choice.value}
+            type="button"
+            role="radio"
+            aria-checked={isSelected}
+            onClick={() => onSelect(choice.value)}
+            className={[
+              "flex h-10 items-center gap-3 rounded-md px-3 text-left text-base transition",
+              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+              isSelected ? "bg-tint-strong text-strong" : "bg-subtle text-fg hover:bg-tint",
+            ].join(" ")}
+          >
+            <span
+              className={[
+                "flex h-4 w-4 shrink-0 items-center justify-center rounded-full",
+                isSelected ? "bg-accent" : "bg-tint-strong",
+              ].join(" ")}
+            >
+              {isSelected && <span className="h-1.5 w-1.5 rounded-full bg-on-accent" />}
+            </span>
+            {choice.icon}
+            {choice.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }

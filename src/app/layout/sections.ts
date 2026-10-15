@@ -1,7 +1,16 @@
 import type { KeyboardCapabilities } from "../../drivers/keyboard-driver";
 
-export type SectionId = "profiles" | "keymap" | "lighting" | "device-settings" | "live-keys" | "device";
-export type SectionGroup = "Configuration" | "Monitoring" | "Keyboard";
+export type SectionId =
+  | "profiles"
+  | "keymap"
+  | "lighting"
+  | "device-settings"
+  | "live-keys"
+  | "device"
+  | "interface"
+  | "about";
+export type SectionGroup = "Configuration" | "Monitoring" | "Keyboard" | "Interface" | "OpenKeyboard";
+export type RailId = "keyboard" | "settings" | "help";
 
 export interface Section {
   readonly id: SectionId;
@@ -9,7 +18,18 @@ export interface Section {
   readonly group: SectionGroup;
 }
 
-export const SECTION_GROUPS: readonly SectionGroup[] = ["Configuration", "Monitoring", "Keyboard"];
+export interface Rail {
+  readonly id: RailId;
+  readonly label: string;
+  readonly title: string;
+  readonly groups: readonly SectionGroup[];
+}
+
+export const RAILS: readonly Rail[] = [
+  { id: "keyboard", label: "Keyboard", title: "Keyboard Configuration", groups: ["Configuration", "Monitoring"] },
+  { id: "settings", label: "Settings", title: "Settings", groups: ["Keyboard", "Interface"] },
+  { id: "help", label: "Help", title: "Help", groups: ["OpenKeyboard"] },
+];
 
 const CAPABILITY_SECTIONS: ReadonlyArray<readonly [Section, (capabilities: KeyboardCapabilities) => boolean]> = [
   [{ id: "profiles", label: "Profiles", group: "Configuration" }, (capabilities) => Boolean(capabilities.profiles)],
@@ -27,9 +47,30 @@ const CAPABILITY_SECTIONS: ReadonlyArray<readonly [Section, (capabilities: Keybo
 
 const DEVICE_SECTION: Section = { id: "device", label: "Device", group: "Keyboard" };
 
+const APPLICATION_SECTIONS: readonly Section[] = [
+  { id: "interface", label: "Interface", group: "Interface" },
+  { id: "about", label: "About OpenKeyboard", group: "OpenKeyboard" },
+];
+
 export function sectionsFor(capabilities: KeyboardCapabilities): Section[] {
   return [
     ...CAPABILITY_SECTIONS.filter(([, isOffered]) => isOffered(capabilities)).map(([section]) => section),
     DEVICE_SECTION,
   ];
+}
+
+export function navigationFor(capabilities: KeyboardCapabilities): Section[] {
+  return [...sectionsFor(capabilities), ...APPLICATION_SECTIONS];
+}
+
+export function railOf(section: Section): Rail {
+  return RAILS.find((rail) => rail.groups.includes(section.group)) ?? RAILS[0];
+}
+
+export function sectionsOfRail(sections: readonly Section[], rail: Rail): Section[] {
+  return sections.filter((section) => rail.groups.includes(section.group));
+}
+
+export function railsWithSections(sections: readonly Section[]): Rail[] {
+  return RAILS.filter((rail) => sectionsOfRail(sections, rail).length > 0);
 }

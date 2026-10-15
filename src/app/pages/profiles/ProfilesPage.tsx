@@ -8,10 +8,9 @@ import type {
 import { describeError } from "../../../shared/describe-error";
 import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
-import { Badge, ColorSwatch, Message, Notice } from "../../components/feedback";
-import { RefreshIcon } from "../../components/icons";
+import { Badge, Message, Notice } from "../../components/feedback";
+import { KeyboardIcon, RefreshIcon } from "../../components/icons";
 import { PageHeader } from "../../components/PageHeader";
-import { PillTabs } from "../../components/PillTabs";
 import { ProfileDetails } from "./ProfileDetails";
 import { ProfileSettingsForm } from "./ProfileSettingsForm";
 
@@ -88,16 +87,18 @@ export function ProfilesPage({ reader, editor }: ProfilesPageProps) {
           </Button>
         }
       />
-      <PillTabs
-        label="Profiles"
-        selected={selectedSlot}
-        onSelect={(slot) => void select(slot)}
-        tabs={overview.profiles.map((profile) => ({
-          value: profile.slot,
-          label: <ProfileTabLabel profile={profile} isActive={profile.slot === overview.activeSlot} />,
-        }))}
-      />
-      <Card>
+      <Card
+        title={<>Onboard profiles <Badge>{overview.profiles.length}</Badge></>}
+        description="Profiles stored on the keyboard. Pick one to see its settings."
+      >
+        <ProfileTiles
+          profiles={overview.profiles}
+          activeSlot={overview.activeSlot}
+          selectedSlot={selectedSlot}
+          onSelect={(slot) => void select(slot)}
+        />
+      </Card>
+      <Card title={view.kind === "message" ? undefined : view.profile.name}>
         <ProfileViewContent
           view={view}
           editor={editor}
@@ -111,18 +112,54 @@ export function ProfilesPage({ reader, editor }: ProfilesPageProps) {
   );
 }
 
-interface ProfileTabLabelProps {
-  readonly profile: KeyboardProfileSummary;
-  readonly isActive: boolean;
+interface ProfileTilesProps {
+  readonly profiles: readonly KeyboardProfileSummary[];
+  readonly activeSlot: number;
+  readonly selectedSlot: number | undefined;
+  readonly onSelect: (slot: number) => void;
 }
 
-function ProfileTabLabel({ profile, isActive }: ProfileTabLabelProps) {
+function ProfileTiles({ profiles, activeSlot, selectedSlot, onSelect }: ProfileTilesProps) {
   return (
-    <>
-      <ColorSwatch color={profile.color} />
-      {profile.name}
-      {isActive && <Badge tone="positive">Active</Badge>}
-    </>
+    <div role="tablist" aria-label="Profiles" className="grid gap-3 md:grid-cols-2">
+      {profiles.map((profile) => {
+        const isSelected = profile.slot === selectedSlot;
+        return (
+          <button
+            key={profile.slot}
+            type="button"
+            role="tab"
+            aria-selected={isSelected}
+            onClick={() => onSelect(profile.slot)}
+            className={[
+              "flex min-h-16 items-center gap-3 rounded-lg border px-3 py-2 text-left transition",
+              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+              isSelected ? "border-accent bg-tint" : "border-transparent bg-sunken hover:bg-subtle",
+            ].join(" ")}
+          >
+            <ProfileAvatar color={profile.color} slot={profile.slot} />
+            <span className="min-w-0 flex-1 truncate text-base font-bold text-strong">{profile.name}</span>
+            {profile.slot === activeSlot && <Badge tone="accent">Active</Badge>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ProfileAvatar({ color, slot }: { readonly color: string; readonly slot: number }) {
+  return (
+    <span className="relative shrink-0">
+      <span
+        className="flex h-10 w-10 items-center justify-center rounded-full bg-panel text-strong"
+        style={{ boxShadow: `0 0 0 2px ${color}` }}
+      >
+        <KeyboardIcon width={20} height={20} />
+      </span>
+      <span className="absolute -top-1.5 -left-1.5 rounded bg-tint-strong px-1 text-xs font-bold text-strong">
+        {slot + 1}
+      </span>
+    </span>
   );
 }
 

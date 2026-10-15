@@ -1,3 +1,4 @@
+import "@fontsource-variable/nunito-sans";
 import "./app/styles.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";

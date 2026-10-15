@@ -18,7 +18,7 @@ import { useLoadable } from "../../hooks/use-loadable";
 
 const FILE_INPUT_CLASSES = [
   "text-sm font-normal text-muted",
-  "file:mr-3 file:rounded-lg file:border file:border-line file:bg-raised file:px-3 file:py-1.5 file:text-fg",
+  "file:mr-3 file:rounded-md file:border-0 file:bg-tint file:px-3 file:py-2 file:font-semibold file:text-strong",
 ].join(" ");
 
 interface KeymapPageProps {
@@ -114,7 +114,9 @@ function LayerView({ keymap, selectedLayer, onSelectLayer }: LayerViewProps) {
         tabs={keymap.layers.map((_, layer) => ({ value: layer, label: `Layer ${layer}` }))}
       />
       <Card title={keymap.name || undefined}>
-        <KeyboardDrawing keymap={keymap} layer={selectedLayer} />
+        <div className="rounded-xl bg-case p-[1.5%]">
+          <KeyboardDrawing keymap={keymap} layer={selectedLayer} />
+        </div>
       </Card>
     </>
   );
@@ -148,7 +150,8 @@ function Keycap({ keymap, layer, physicalKey: key, board }: KeycapProps) {
       title={title}
       className={[
         "absolute box-border flex items-center justify-center overflow-hidden p-0.5 text-center",
-        "rounded-md border-2 border-panel bg-raised text-[clamp(0.5rem,1.6cqw,0.75rem)] leading-tight text-fg",
+        "rounded-md border-2 border-case bg-keycap text-[clamp(0.5rem,1.6cqw,0.75rem)] leading-tight",
+        "font-semibold text-keycap-legend shadow-[inset_0_-3px_0_rgba(0,0,0,0.35)]",
         "break-words",
       ].join(" ")}
       style={{
