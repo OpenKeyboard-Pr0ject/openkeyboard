@@ -170,7 +170,7 @@ export function LayeredLightingWorkspace(
         onSelectAll={() => setSelectedIds(new Set(layout.keys.map(matrixKeyId)))}
         onClear={() => setSelectedIds(new Set())}
       />
-      <div className="grid gap-4">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card title="Colors">
           <div className="flex flex-col gap-4">
             <ColorPicker
@@ -188,7 +188,7 @@ export function LayeredLightingWorkspace(
             </Button>
           </div>
         </Card>
-        <Card title="Effects">
+        <Card title="Effects" className="md:col-span-3">
           <EffectsPanel
             catalog={catalog}
             draft={draft}
