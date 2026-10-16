@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { type LayoutKey, layoutSize, matrixKeyId, type PhysicalLayout } from "../../keyboard/physical-layout";
+import { colorFromHex } from "../../keyboard/lighting";
 
 const KEY_GAP_CQW = 0.3;
 const RELATIVE_LUMINANCE_THRESHOLD = 0.55;
@@ -75,8 +76,13 @@ function KeyCap({ layoutKey, position, appearance, isSelected, isAnimated, onTog
     isSelected ? "outline-2 outline-accent" : "",
     onToggle ? "cursor-pointer hover:brightness-125" : "",
   ].join(" ");
+  const rgbFromFill = appearance.fill ? colorFromHex(appearance.fill) : { red: 0, green: 0, blue: 0 };
+
   const faceStyle: CSSProperties = appearance.fill
-    ? { background: appearance.fill, color: legendColorOn(appearance.fill) }
+    ? { 
+		background: `rgba(${rgbFromFill.red}, ${rgbFromFill.green}, ${rgbFromFill.blue}, 0.7)`, 
+		color: "#ffffff",
+	 }
     : { color: "var(--app-keycap-legend)" };
   const holdHandlers = onHold
     ? {
