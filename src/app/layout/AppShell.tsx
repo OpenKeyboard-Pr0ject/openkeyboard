@@ -138,6 +138,7 @@ function SectionPage({ section, state, connection, theme, onOpenSection }: Secti
             reader={capabilities.lighting}
             editor={capabilities.lightingEditor}
             physicalLayout={capabilities.physicalLayout}
+            analogKeys={capabilities.analogKeys}
           />
         )
         : null;

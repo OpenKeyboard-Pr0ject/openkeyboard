@@ -19,9 +19,13 @@ interface KeyboardCanvasProps {
   readonly selectedIds?: ReadonlySet<string>;
   readonly onToggleKey?: (id: string) => void;
   readonly appearanceOf?: (key: LayoutKey) => KeyAppearance;
+  readonly isAnimated?: boolean;
+  readonly onHoldKey?: (id: string, isHeld: boolean) => void;
 }
 
-export function KeyboardCanvas({ layout, label, selectedIds, onToggleKey, appearanceOf }: KeyboardCanvasProps) {
+export function KeyboardCanvas(
+  { layout, label, selectedIds, onToggleKey, appearanceOf, isAnimated = false, onHoldKey }: KeyboardCanvasProps,
+) {
   const size = layoutSize(layout);
   return (
     <div className="rounded-xl bg-case p-[1.6%] shadow-[0_12px_32px_rgba(0,0,0,0.35)]">
@@ -40,7 +44,9 @@ export function KeyboardCanvas({ layout, label, selectedIds, onToggleKey, appear
               position={keyPosition(key, size.width, size.height)}
               appearance={appearanceOf?.(key) ?? {}}
               isSelected={selectedIds?.has(id) ?? false}
+              isAnimated={isAnimated}
               onToggle={onToggleKey ? () => onToggleKey(id) : undefined}
+              onHold={onHoldKey ? (isHeld) => onHoldKey(id, isHeld) : undefined}
             />
           );
         })}
@@ -54,13 +60,16 @@ interface KeyCapProps {
   readonly position: CSSProperties;
   readonly appearance: KeyAppearance;
   readonly isSelected: boolean;
+  readonly isAnimated: boolean;
   readonly onToggle?: () => void;
+  readonly onHold?: (isHeld: boolean) => void;
 }
 
-function KeyCap({ layoutKey, position, appearance, isSelected, onToggle }: KeyCapProps) {
+function KeyCap({ layoutKey, position, appearance, isSelected, isAnimated, onToggle, onHold }: KeyCapProps) {
   const faceClasses = [
     "relative flex h-full w-full flex-col items-center justify-center overflow-hidden rounded-[0.5cqw]",
-    "text-[clamp(6px,1.1cqw,13px)] leading-tight font-semibold transition",
+    "text-[clamp(6px,1.1cqw,13px)] leading-tight font-semibold",
+    isAnimated ? "transition-[filter]" : "transition",
     "shadow-[inset_0_-0.3cqw_0_rgba(0,0,0,0.35)]",
     appearance.fill ? "" : appearance.isHighlighted ? "bg-keycap-highlight" : "bg-keycap",
     isSelected ? "outline-2 outline-accent" : "",
@@ -69,6 +78,14 @@ function KeyCap({ layoutKey, position, appearance, isSelected, onToggle }: KeyCa
   const faceStyle: CSSProperties = appearance.fill
     ? { background: appearance.fill, color: legendColorOn(appearance.fill) }
     : { color: "var(--app-keycap-legend)" };
+  const holdHandlers = onHold
+    ? {
+      onPointerDown: () => onHold(true),
+      onPointerUp: () => onHold(false),
+      onPointerLeave: () => onHold(false),
+      onPointerCancel: () => onHold(false),
+    }
+    : {};
   const face = (
     <>
       {appearance.annotation && (
@@ -89,11 +106,12 @@ function KeyCap({ layoutKey, position, appearance, isSelected, onToggle }: KeyCa
           onClick={onToggle}
           className={`${faceClasses} focus-visible:outline-2 focus-visible:outline-accent`}
           style={faceStyle}
+          {...holdHandlers}
         >
           {face}
         </button>
       ) : (
-        <span className={faceClasses} style={faceStyle}>{face}</span>
+        <span className={faceClasses} style={faceStyle} {...holdHandlers}>{face}</span>
       )}
     </span>
   );

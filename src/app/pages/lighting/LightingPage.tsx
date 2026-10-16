@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { AnalogKeySource } from "../../../keyboard/analog-keys";
 import {
   colorToHex,
   effectColors,
@@ -34,9 +35,10 @@ interface LightingPageProps {
   readonly reader: KeyboardLightingReader;
   readonly editor: KeyboardLightingEditor | undefined;
   readonly physicalLayout: PhysicalLayout | undefined;
+  readonly analogKeys?: AnalogKeySource;
 }
 
-export function LightingPage({ reader, editor, physicalLayout }: LightingPageProps) {
+export function LightingPage({ reader, editor, physicalLayout, analogKeys }: LightingPageProps) {
   const lighting = useLoadable(() => reader.readLighting());
   const [editing, setEditing] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
@@ -70,6 +72,7 @@ export function LightingPage({ reader, editor, physicalLayout }: LightingPagePro
             editor={editor}
             catalog={catalog}
             physicalLayout={physicalLayout}
+            analogKeys={analogKeys}
             onSaved={(saved) => {
               setSavedCount((count) => count + 1);
               lighting.show(saved, SAVED_NOTICE);

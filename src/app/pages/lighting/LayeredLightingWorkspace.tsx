@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { AnalogKeySource } from "../../../keyboard/analog-keys";
 import type { KeyboardLightingEditor, LightingState } from "../../../keyboard/lighting";
 import type { KeyColorLayer, LayeredEffectCatalog } from "../../../keyboard/lighting-effects";
 import {
@@ -14,11 +15,11 @@ import { ColorPicker } from "../../components/ColorPicker";
 import { Badge, Message } from "../../components/feedback";
 import { RedoIcon, UndoIcon } from "../../components/icons";
 import { Toggle } from "../../components/inputs";
-import { KeyboardCanvas } from "../../components/KeyboardCanvas";
 import { useHistory } from "../../hooks/use-history";
 import { useRecentColors } from "../../hooks/use-recent-colors";
 import { useStoredFlag } from "../../hooks/use-stored-flag";
 import { KeySelectionBar } from "../../profile-editing/KeySelectionBar";
+import { EffectPreviewKeyboard } from "./EffectPreviewKeyboard";
 import { EffectsPanel } from "./EffectsPanel";
 import {
   BASE_LAYER_SELECTION,
@@ -35,6 +36,8 @@ const SELECT_KEYS_HINT = "Select keys, then apply a color to them";
 const UNDO_KEY = "z";
 const REDO_KEY = "y";
 const LIVE_PREVIEW_STORAGE_KEY = "openkeyboard.lighting-live-preview";
+const ANIMATE_EFFECTS_STORAGE_KEY = "openkeyboard.lighting-animate-effects";
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 const LIVE_PREVIEW_EXPLANATION = "Changes show on the keyboard right away. Save to Keyboard keeps them. "
   + "Discard changes, or leaving this page, puts the saved lighting back.";
 const SAVE_ONLY_EXPLANATION = "Changes are saved to the active profile and read back to confirm.";
@@ -44,11 +47,12 @@ interface LayeredLightingWorkspaceProps {
   readonly editor: KeyboardLightingEditor;
   readonly catalog: LayeredEffectCatalog;
   readonly physicalLayout: PhysicalLayout | undefined;
+  readonly analogKeys: AnalogKeySource | undefined;
   readonly onSaved: (state: LightingState) => void;
 }
 
 export function LayeredLightingWorkspace(
-  { current, editor, catalog, physicalLayout, onSaved }: LayeredLightingWorkspaceProps,
+  { current, editor, catalog, physicalLayout, analogKeys, onSaved }: LayeredLightingWorkspaceProps,
 ) {
   const stored = useMemo(() => draftFromState(current, catalog), [current, catalog]);
   const history = useHistory(() => stored);
@@ -64,6 +68,7 @@ export function LayeredLightingWorkspace(
   const change = useMemo(() => lightingChangeFromDraft(stored, draft), [stored, draft]);
   const [livePreviewEnabled, setLivePreviewEnabled] = useStoredFlag(LIVE_PREVIEW_STORAGE_KEY, true);
   const preview = useLivePreview(editor, change, livePreviewEnabled);
+  const [animateEffects, setAnimateEffects] = useStoredFlag(ANIMATE_EFFECTS_STORAGE_KEY, !prefersReducedMotion());
   const canDiscard = dirty || preview.pending;
 
   useUndoShortcuts(history.undo, history.redo, busy);
@@ -117,17 +122,25 @@ export function LayeredLightingWorkspace(
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-end gap-2">
-        {preview.supported && (
-          <span className="mr-auto flex items-center gap-2 text-sm text-fg">
-            <Toggle
-              label="Live preview"
-              checked={livePreviewEnabled}
-              disabled={busy}
-              onChange={setLivePreviewEnabled}
-            />
-            Live preview
-          </span>
-        )}
+        <div className="mr-auto flex flex-wrap items-center gap-4">
+          {preview.supported && (
+            <span className="flex items-center gap-2 text-sm text-fg">
+              <Toggle
+                label="Live preview"
+                checked={livePreviewEnabled}
+                disabled={busy}
+                onChange={setLivePreviewEnabled}
+              />
+              Live preview
+            </span>
+          )}
+          {catalog.animator && (
+            <span className="flex items-center gap-2 text-sm text-fg">
+              <Toggle label="Animate effects" checked={animateEffects} onChange={setAnimateEffects} />
+              Animate effects
+            </span>
+          )}
+        </div>
         {preview.pending && dirty && <Badge tone="accent">Previewing</Badge>}
         {dirty && <Badge tone="warning">Unsaved changes</Badge>}
         <Button
@@ -155,12 +168,15 @@ export function LayeredLightingWorkspace(
       </div>
       <div className="grid gap-4 md:grid-cols-[10rem_minmax(0,1fr)]">
         <KeyColorLayerList layers={catalog.keyColorLayers} />
-        <KeyboardCanvas
+        <EffectPreviewKeyboard
           layout={layout}
-          label="Key colors"
+          animator={catalog.animator}
+          effects={draft.effects}
+          keyColors={draft.keyColors}
+          isRunning={animateEffects}
+          analogKeys={analogKeys}
           selectedIds={selectedIds}
           onToggleKey={busy ? undefined : toggleKey}
-          appearanceOf={(key) => ({ fill: draft.keyColors.get(matrixKeyId(key)) })}
         />
       </div>
       <KeySelectionBar
@@ -252,6 +268,10 @@ function useUndoShortcuts(undo: () => void, redo: () => void, disabled: boolean)
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [undo, redo, disabled]);
+}
+
+function prefersReducedMotion(): boolean {
+  return typeof window.matchMedia === "function" && window.matchMedia(REDUCED_MOTION_QUERY).matches;
 }
 
 function isEditingText(target: EventTarget | null): boolean {

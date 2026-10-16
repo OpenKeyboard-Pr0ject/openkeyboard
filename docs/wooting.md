@@ -281,6 +281,8 @@ Core field 4 holds repeated field 1 messages, one per layer. Each layer holds ex
 - **Fn Layer 1** has its own key colors in Wootility, but selecting it sends nothing and saving sends no extra RGB report. Where those colors live is open.
 - **Base effects cover key colors:** Wootility warns about a non-Static base effect. With a Static base, Fx layers draw over the key colors.
 
+- **Drawing effects in the UI:** `wooting-effect-animation.ts` draws every effect from the parameters above, without reading the keyboard's own frames, so it is an approximation. Speeds marked "raw × 0.25 s" are the period of one cycle (Wave, Cycle, Breath) or the fade time (Trail). The look palettes are estimates by eye. Wave fits one cycle of its look across the board. Noise is value noise between the two colors, and Scale sets the blob size. Spiral turns two arms around the board center. Base brightness is the share of light left on keys that no effect lights. Jelly, AOE and Mixing were not studied on the keyboard: Jelly lights a soft area around a held key that wobbles and shrinks after release, AOE lights a hard-edged area while the key is held, and Mixing turns the held key toward the inverse of its color. Comparing them with the keyboard is open.
+
 `wooting-rgb-effects-codec.ts` decodes field 4 into a base effect and Fx layers, and writes them back by editing the stored layer when its effect is unchanged, so fields without a control keep their values. A new layer starts from Wootility's default bytes. Its tests rebuild every captured preview byte for byte.
 
 ### Writing lighting

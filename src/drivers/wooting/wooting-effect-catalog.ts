@@ -10,6 +10,7 @@ import {
   WootingEffectId,
   type WootingEffectIdValue,
 } from "../../protocol/wooting/wooting-rgb-effects-codec";
+import { WOOTING_EFFECT_ANIMATOR } from "./wooting-effect-animation";
 import { WOOTING_RGB_PRESETS } from "./wooting-rgb-presets";
 
 const MAXIMUM_EFFECT_LAYERS = 3;
@@ -195,4 +196,5 @@ export const WOOTING_EFFECT_CATALOG: LayeredEffectCatalog = {
   newEffectLayerId: WootingEffectId.scan,
   keyColorsBaseEffectId: WootingEffectId.static,
   presets: WOOTING_RGB_PRESETS,
+  animator: WOOTING_EFFECT_ANIMATOR,
 };

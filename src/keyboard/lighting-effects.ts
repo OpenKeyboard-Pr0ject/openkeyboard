@@ -1,4 +1,5 @@
 import { isValidColor, type KeyColor, type RgbColor } from "./lighting";
+import type { LayeredEffectAnimator } from "./lighting-animation";
 
 const UNRECOGNIZED_EFFECT_LABEL = "an unrecognized effect";
 
@@ -88,6 +89,7 @@ export interface LayeredEffectCatalog {
   readonly newEffectLayerId: string;
   readonly keyColorsBaseEffectId: string;
   readonly presets: readonly LightingPreset[];
+  readonly animator?: LayeredEffectAnimator;
 }
 
 export class InvalidLayeredEffectsError extends Error {

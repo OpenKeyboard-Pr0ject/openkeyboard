@@ -19,6 +19,7 @@ What is still unknown, what is implemented but untested, and what would come nex
 | Whether other Wooting models (60HE+, Two HE, UwU) share the 80HE layout | Needs those keyboards. The read path already accepts any `0xFF55` Wooting device but marks it unverified |
 | Where Fn Layer 1 key colors are stored | Wootility saves no extra RGB report for them. Change one Fn layer color in Wootility and diff the whole save sequence, especially `0x1B` |
 | Ripple flags bit 1, Breath field 2, Touch fields 3–5, Scan directions 1 and 2 | No Wootility control changes them. OpenKeyboard keeps them as stored |
+| How closely the RGB Settings animation matches the keyboard (look palettes, Wave span, Noise scale, Spiral shape, and Jelly, AOE and Mixing) | Preview each effect with live preview on and compare the keyboard with the picture side by side, ideally on video |
 | What ends a pending RGB preview besides `08` (replugging, switching profiles) | Replugging restarts the keyboard on TenZ Profile (experiment 18). Preview one change, close the tab, replug, and see what the keyboard shows |
 | Whether writes before the report fix lost data | Every write went out on report 1 until experiment 19, so anything after byte 32 was cut. All 43 structures match the baseline now, and the profile writes verified on hardware were short, but a per-key write covering many keys may have been cut. Re-test per-key actuation for many keys |
 | `0x32` fields 1.2 and 1.3 (`0xFFFF`) | Look for a Wootility setting that changes them |
