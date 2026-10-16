@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { AnalogKeySource } from "../../../keyboard/analog-keys";
-import type { KeyboardLightingEditor, LightingState } from "../../../keyboard/lighting";
+import type { KeyboardLightingEditor, LightingFrameReader, LightingState } from "../../../keyboard/lighting";
 import type { KeyColorLayer, LayeredEffectCatalog } from "../../../keyboard/lighting-effects";
 import {
   type LayoutKey,
@@ -48,11 +48,12 @@ interface LayeredLightingWorkspaceProps {
   readonly catalog: LayeredEffectCatalog;
   readonly physicalLayout: PhysicalLayout | undefined;
   readonly analogKeys: AnalogKeySource | undefined;
+  readonly frames: LightingFrameReader | undefined;
   readonly onSaved: (state: LightingState) => void;
 }
 
 export function LayeredLightingWorkspace(
-  { current, editor, catalog, physicalLayout, analogKeys, onSaved }: LayeredLightingWorkspaceProps,
+  { current, editor, catalog, physicalLayout, analogKeys, frames, onSaved }: LayeredLightingWorkspaceProps,
 ) {
   const stored = useMemo(() => draftFromState(current, catalog), [current, catalog]);
   const history = useHistory(() => stored);
@@ -70,6 +71,7 @@ export function LayeredLightingWorkspace(
   const preview = useLivePreview(editor, change, livePreviewEnabled);
   const [animateEffects, setAnimateEffects] = useStoredFlag(ANIMATE_EFFECTS_STORAGE_KEY, !prefersReducedMotion());
   const canDiscard = dirty || preview.pending;
+  const keyboardShowsDraft = !dirty || (preview.supported && livePreviewEnabled && !preview.error);
 
   useUndoShortcuts(history.undo, history.redo, busy);
 
@@ -175,6 +177,9 @@ export function LayeredLightingWorkspace(
           keyColors={draft.keyColors}
           isRunning={animateEffects}
           analogKeys={analogKeys}
+          frames={frames}
+          keyboardShowsDraft={keyboardShowsDraft}
+          holdsKeyboardFrames={busy}
           selectedIds={selectedIds}
           onToggleKey={busy ? undefined : toggleKey}
         />

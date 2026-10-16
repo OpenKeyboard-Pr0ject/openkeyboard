@@ -23,6 +23,7 @@ export const WootingCommand = {
   getRgbUpperRows: 0x23,
   getRgbLowerRows: 0x24,
   getRgbCore: 0x32,
+  getRgbFrame: 0x4a,
 } as const;
 
 export type WootingCommandId = (typeof WootingCommand)[keyof typeof WootingCommand];

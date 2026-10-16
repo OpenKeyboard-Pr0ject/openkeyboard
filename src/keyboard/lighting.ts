@@ -56,6 +56,10 @@ export interface KeyboardLightingReader {
   readLighting(): Promise<LightingState>;
 }
 
+export interface LightingFrameReader {
+  readFrame(): Promise<readonly KeyColor[]>;
+}
+
 export interface LightingPreview {
   show(change: LightingChange): Promise<void>;
   save(change: LightingChange): Promise<LightingState>;

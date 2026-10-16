@@ -101,7 +101,8 @@ Command names come from [libwootility](https://github.com/meeuw/libwootility) (`
 | `0x3D` | *(not in libwootility)* | **Used.** Per-key Rapid Trigger, see [Per-key Rapid Trigger](#per-key-rapid-trigger) |
 | `0x3E`, `0x43`, `0x46`, `0x47`, `0x48`, `0x51`–`0x53` | *(not in libwootility)* | Read by Wootility on connect. `0x48` also appears in the save sequence. Unknown |
 | `0x42` | *(not in libwootility)* | Read only. Write counterpart is report `0x20` |
-| `0x49`, `0x4A` | *(not in libwootility)* | Wootility polls `0x4A` constantly and `0x49` occasionally. Unknown |
+| `0x49` | *(not in libwootility)* | Wootility polls it occasionally. Read only. `08 01 10 00 18 00 20 00` on 2.14.1. Unknown |
+| `0x4A` | *(not in libwootility)* | **Used.** The lighting frame the keyboard shows right now, see [Lighting frame](#lighting-frame). Wootility polls it constantly |
 
 The feature command ids and the output report types in [Writing](#writing) are **separate namespaces**. For example, feature command `0x15` is KEYS_OFF, while output report type `0x15` writes per-key actuation.
 
@@ -281,7 +282,7 @@ Core field 4 holds repeated field 1 messages, one per layer. Each layer holds ex
 - **Fn Layer 1** has its own key colors in Wootility, but selecting it sends nothing and saving sends no extra RGB report. Where those colors live is open.
 - **Base effects cover key colors:** Wootility warns about a non-Static base effect. With a Static base, Fx layers draw over the key colors.
 
-- **Drawing effects in the UI:** `wooting-effect-animation.ts` draws every effect from the parameters above, without reading the keyboard's own frames, so it is an approximation. Speeds marked "raw × 0.25 s" are the period of one cycle (Wave, Cycle, Breath) or the fade time (Trail). The look palettes are estimates by eye. Wave fits one cycle of its look across the board. Noise is value noise between the two colors, and Scale sets the blob size. Spiral turns two arms around the board center. Base brightness is the share of light left on keys that no effect lights. Jelly, AOE and Mixing were not studied on the keyboard: Jelly lights a soft area around a held key that wobbles and shrinks after release, AOE lights a hard-edged area while the key is held, and Mixing turns the held key toward the inverse of its color. Comparing them with the keyboard is open.
+- **Drawing effects in the UI:** when the keyboard does not show the draft (unsaved changes with live preview off), or the [lighting frame](#lighting-frame) cannot be read, `wooting-effect-animation.ts` draws every effect from the parameters above. This is an approximation. Speeds marked "raw × 0.25 s" are the period of one cycle (Wave, Cycle, Breath) or the fade time (Trail). The look palettes are estimates by eye. Wave fits one cycle of its look across the board. Noise is value noise between the two colors, and Scale sets the blob size. Spiral turns two arms around the board center. Base brightness is the share of light left on keys that no effect lights. Jelly, AOE and Mixing were not studied on the keyboard: Jelly lights a soft area around a held key that wobbles and shrinks after release, AOE lights a hard-edged area while the key is held, and Mixing turns the held key toward the inverse of its color. Comparing them with the keyboard is open.
 
 `wooting-rgb-effects-codec.ts` decodes field 4 into a base effect and Fx layers, and writes them back by editing the stored layer when its effect is unchanged, so fields without a control keep their values. A new layer starts from Wootility's default bytes. Its tests rebuild every captured preview byte for byte.
 
@@ -308,6 +309,17 @@ feature    D1 DA 08 01                                                          
 - **Damaged rows came from cut reports, not from reading during a preview:** after experiment 13, `0x23` and `0x24` returned rows whose row 0 kept 7 colors and then held the tail of the `0x37` metadata reply (`80 0c "woot:p:black" 00`), still 21 values long. This was first blamed on reading during a preview. Experiment 18 produced the same damage with correct bytes, and a replug showed it was stored: the rows had been sent on report 1 and cut after 32 bytes (see [USB interfaces](#usb-interfaces)). OpenKeyboard still reads every part once before writing, as Wootility does.
 
 `WootingLightingEditor` reads `0x32`, `0x23` and `0x24` once, before any write, and refuses rows that are not 3 rows of 21 colors. It then sends the same four messages as Wootility, changing only brightness (field 1.1), the effects (field 4) and the colors of the keys that changed, and reads all three parts back to compare them by meaning. Its tests replay the captured bytes exactly and model the garbled reads. See [reverse-engineering.md](reverse-engineering.md#wooting-rgb) for what happened on hardware.
+
+### Lighting frame
+
+Read command `0x4A` (no parameters) answers with the colors the LEDs show at that moment, effects and key presses included. Wootility polls it many times a second to draw its keyboard, which is why its picture matches the keys exactly. Found on 2026-10-16 with a read-only probe while Typing Profile ran Rainbow Wave.
+
+- **Layout:** 224 bytes on the 80HE, read as little-endian `u16` RGB565 colors. The first 102 are 6 matrix rows of 17 columns (the 80HE's matrix columns 0–16), row by row. Positions without a key repeat a neighbor's color.
+- **Trailing values:** the last 10 colors were all `0xD020` in every frame. Unknown, not used.
+- **Speed:** a read takes about 2.4 ms. Three frames 0.3 s apart showed the wave's hue moving 26°, which is a 4 s cycle, matching Speed 16 × 0.25 s.
+- **Rainbow Wave:** going right, the hue falls from left to right (magenta, blue, cyan, green, yellow, red) and covers about one cycle over the 17 columns.
+
+RGB Settings reads the frame about 30 times a second (`WootingLightingFrameReader`) while the keyboard shows the draft: with no unsaved changes, or with live preview on. Reads pause while the page is hidden and while saving or discarding.
 
 ### Live preview
 

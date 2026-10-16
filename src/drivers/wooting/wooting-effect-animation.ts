@@ -60,7 +60,7 @@ const AOE_RADIUS_KEYS = 3;
 const AOE_EDGE_SOFTNESS_KEYS = 0.75;
 
 const LOOK_PALETTES: readonly (readonly RgbColor[])[] = [
-  ["#ff0000", "#ffff00", "#00ff00", "#00ffff", "#0000ff", "#ff00ff"],
+  ["#ff0000", "#ff00ff", "#0000ff", "#00ffff", "#00ff00", "#ffff00"],
   ["#00ffd5", "#0090ff", "#0018ff", "#00c8ff"],
   ["#ff0000", "#ff5a00", "#ffc800", "#ff3000"],
   ["#00ff3c", "#b4ff00", "#ff78c8", "#5affa0"],

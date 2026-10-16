@@ -2,7 +2,7 @@ import type { AnalogKeySource } from "../keyboard/analog-keys";
 import type { KeyboardDeviceSettingsEditor, KeyboardDeviceSettingsReader } from "../keyboard/device-settings";
 import type { KeyboardProfileEditor, KeyboardProfileReader } from "../keyboard/keyboard-profile";
 import type { KeyboardDefinitionLoader, KeymapReader } from "../keyboard/keymap";
-import type { KeyboardLightingEditor, KeyboardLightingReader } from "../keyboard/lighting";
+import type { KeyboardLightingEditor, KeyboardLightingReader, LightingFrameReader } from "../keyboard/lighting";
 import type { PhysicalLayout } from "../keyboard/physical-layout";
 
 export interface KeyboardIdentity {
@@ -22,6 +22,7 @@ export interface KeyboardCapabilities {
   readonly definitionLoader?: KeyboardDefinitionLoader;
   readonly lighting?: KeyboardLightingReader;
   readonly lightingEditor?: KeyboardLightingEditor;
+  readonly lightingFrames?: LightingFrameReader;
   readonly deviceSettings?: KeyboardDeviceSettingsReader;
   readonly deviceSettingsEditor?: KeyboardDeviceSettingsEditor;
   readonly physicalLayout?: PhysicalLayout;

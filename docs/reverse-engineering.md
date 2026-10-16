@@ -134,6 +134,7 @@ The payloads are protobuf without a schema. A tag is a varint `field << 3 | wire
 | Command framing, report IDs, status codes | Probed `GET_VERSION` with report IDs 0 and 1, magics `D0 DA` and `D1 DA`, and lengths 8, 65 and 257 |
 | Command ids | libwootility and the gist, then each id checked with a read-only probe |
 | Analog stream layout | 3-minute capture while the user typed a known sequence. The decoder reproduced the typed text |
+| Lighting frame `0x4A` | Read-only probe of the command Wootility polls constantly, while Rainbow Wave ran. The 17-color period in each row, and the hue moving at the configured speed, gave the layout |
 | Settings fields 3, 4, 7 | Polled `0x27` while the user toggled Rapid Trigger and Continuous and changed sensitivity in Wootility |
 | Actuation units | Compared raw values with a screenshot of Wootility's actuation page, then refined with values Wootility wrote (2.95 → `0x6F32`, 3.00 → `0x6FFF`) |
 | Legacy 8-bit encoding | Slot 2's values `0x3F` and `0x1A` matched the odd precise factory values in slot 0 (0.988 and 0.408 mm) |

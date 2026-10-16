@@ -129,6 +129,7 @@ function capabilitiesOf(session: KeyboardSession): KeyboardCapabilities {
     definitionLoader: session.definitionLoader,
     lighting: session.lighting,
     lightingEditor: session.lightingEditor,
+    lightingFrames: session.lightingFrames,
     deviceSettings: session.deviceSettings,
     deviceSettingsEditor: session.deviceSettingsEditor,
     physicalLayout: session.physicalLayout,

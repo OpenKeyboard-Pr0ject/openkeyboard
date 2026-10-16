@@ -5,6 +5,7 @@ import {
   effectColors,
   type KeyboardLightingEditor,
   type KeyboardLightingReader,
+  type LightingFrameReader,
   type LightingState,
 } from "../../../keyboard/lighting";
 import { matrixKeyId, type PhysicalLayout } from "../../../keyboard/physical-layout";
@@ -36,9 +37,10 @@ interface LightingPageProps {
   readonly editor: KeyboardLightingEditor | undefined;
   readonly physicalLayout: PhysicalLayout | undefined;
   readonly analogKeys?: AnalogKeySource;
+  readonly frames?: LightingFrameReader;
 }
 
-export function LightingPage({ reader, editor, physicalLayout, analogKeys }: LightingPageProps) {
+export function LightingPage({ reader, editor, physicalLayout, analogKeys, frames }: LightingPageProps) {
   const lighting = useLoadable(() => reader.readLighting());
   const [editing, setEditing] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
@@ -73,6 +75,7 @@ export function LightingPage({ reader, editor, physicalLayout, analogKeys }: Lig
             catalog={catalog}
             physicalLayout={physicalLayout}
             analogKeys={analogKeys}
+            frames={frames}
             onSaved={(saved) => {
               setSavedCount((count) => count + 1);
               lighting.show(saved, SAVED_NOTICE);

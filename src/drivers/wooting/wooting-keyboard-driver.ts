@@ -1,7 +1,7 @@
 import { hasCollection } from "../../hid/collections";
 import type { AnalogKeySource } from "../../keyboard/analog-keys";
 import type { KeyboardProfileEditor, KeyboardProfileReader } from "../../keyboard/keyboard-profile";
-import type { KeyboardLightingEditor, KeyboardLightingReader } from "../../keyboard/lighting";
+import type { KeyboardLightingEditor, KeyboardLightingReader, LightingFrameReader } from "../../keyboard/lighting";
 import type { PhysicalLayout } from "../../keyboard/physical-layout";
 import { decodeFirmwareVersion } from "../../protocol/wooting/wooting-codec";
 import { WootingCommandChannel } from "../../protocol/wooting/wooting-command-channel";
@@ -17,15 +17,20 @@ import {
   WOOTING_WRITE_VERIFIED_PRODUCT_IDS,
   WootingCommand,
 } from "../../protocol/wooting/wooting-constants";
+import type { WootingRgbFrameShape } from "../../protocol/wooting/wooting-rgb-codec";
 import type { AuthorizedDeviceLister, KeyboardDriver, KeyboardIdentity, KeyboardSession } from "../keyboard-driver";
 import { WOOTING_80HE_LAYOUT } from "./wooting-80he-layout";
 import { WootingAnalogKeySource } from "./wooting-analog-key-source";
 import { WootingLightingEditor } from "./wooting-lighting-editor";
+import { WootingLightingFrameReader } from "./wooting-lighting-frame-reader";
 import { WootingLightingReader } from "./wooting-lighting-reader";
 import { WootingProfileEditor } from "./wooting-profile-editor";
 import { WootingProfileReader } from "./wooting-profile-reader";
 
 const PHYSICAL_LAYOUTS: ReadonlyMap<number, PhysicalLayout> = new Map([[WOOTING_80HE_PRODUCT_ID, WOOTING_80HE_LAYOUT]]);
+const RGB_FRAME_SHAPES: ReadonlyMap<number, WootingRgbFrameShape> = new Map([
+  [WOOTING_80HE_PRODUCT_ID, { rows: 6, columns: 17 }],
+]);
 
 class WootingKeyboardSession implements KeyboardSession {
   readonly analogKeys: AnalogKeySource;
@@ -33,6 +38,7 @@ class WootingKeyboardSession implements KeyboardSession {
   readonly profileEditor?: KeyboardProfileEditor;
   readonly lighting: KeyboardLightingReader;
   readonly lightingEditor?: KeyboardLightingEditor;
+  readonly lightingFrames?: LightingFrameReader;
   readonly physicalLayout?: PhysicalLayout;
   private readonly commands: WootingCommandChannel;
 
@@ -47,6 +53,8 @@ class WootingKeyboardSession implements KeyboardSession {
       this.lightingEditor = new WootingLightingEditor(this.commands, lightingReader);
     }
     this.physicalLayout = PHYSICAL_LAYOUTS.get(device.productId);
+    const frameShape = RGB_FRAME_SHAPES.get(device.productId);
+    if (frameShape) this.lightingFrames = new WootingLightingFrameReader(this.commands, frameShape);
     if (WOOTING_WRITE_VERIFIED_PRODUCT_IDS.has(device.productId)) {
       this.profileEditor = new WootingProfileEditor(this.commands, reader);
     }

@@ -18,6 +18,19 @@ const MAXIMUM_CHANNEL_VALUE = 0xff;
 const RED_DROPPED_BITS = 3;
 const GREEN_DROPPED_BITS = 2;
 const BLUE_DROPPED_BITS = 3;
+const BYTES_PER_FRAME_COLOR = 2;
+
+export interface WootingRgbFrameShape {
+  readonly rows: number;
+  readonly columns: number;
+}
+
+export class IncompleteRgbFrameError extends Error {
+  constructor(byteLength: number, shape: WootingRgbFrameShape) {
+    super(`The lighting frame holds ${byteLength} bytes, too few for ${shape.rows} rows of ${shape.columns} keys.`);
+    this.name = "IncompleteRgbFrameError";
+  }
+}
 
 export interface WootingRgbCore {
   readonly brightnessPercent: number;
@@ -41,6 +54,17 @@ export function decodeRgbRows(payload: Uint8Array, firstRow: number): KeyColor[]
       matrixColumn: column,
       color: colorFromRgb565(rgb565),
     })));
+}
+
+export function decodeRgbFrame(payload: Uint8Array, shape: WootingRgbFrameShape): KeyColor[] {
+  const colorCount = shape.rows * shape.columns;
+  if (payload.length < colorCount * BYTES_PER_FRAME_COLOR) throw new IncompleteRgbFrameError(payload.length, shape);
+  const view = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+  return Array.from({ length: colorCount }, (_, index) => ({
+    matrixRow: Math.floor(index / shape.columns),
+    matrixColumn: index % shape.columns,
+    color: colorFromRgb565(view.getUint16(index * BYTES_PER_FRAME_COLOR, true)),
+  }));
 }
 
 export function brightnessRawFromPercent(percent: number): number {

@@ -12,14 +12,15 @@ What is still unknown, what is implemented but untested, and what would come nex
 | Whether Continuous Rapid Trigger can be set per key | Same experiment with the Continuous toggle on a single key |
 | What `0x13`/`0x29`, `0x20`/`0x42`, `0x21`, `0x28`, `0x12`, `0x18`, `0x1B`, `0x07` hold | Change the matching Wootility pages (Gamepad, Advanced Keys, Light Indicator, Remap) one at a time and diff the save sequence |
 | What feature commands `0x35` and `0x48` do in the save sequence | Find which data they follow. `0x35` is SAVE_AKC_PROFILE in libwootility and follows `0x18` |
-| Read commands `0x3E`, `0x43`, `0x46`, `0x47`, `0x49`, `0x4A`, `0x51`–`0x53` | Read them with a probe that lists only these ids (Wootility already sends them) and look for patterns |
+| Read commands `0x3E`, `0x43`, `0x46`, `0x47`, `0x49`, `0x51`–`0x53` | Read them with a probe that lists only these ids (Wootility already sends them) and look for patterns |
 | Device config `0x13` payload `00 00 00 00 11 00 0c` | Compare with another Wooting model, or change keyboard-wide options |
 | Global settings `0x33` (`5`, `10`, `1`) | Change the RGB idle timers in Wootility and poll `0x33` |
 | How Wootility converts a legacy 8-bit per-key list | Save TenZ Ultra Profile once in Wootility and compare `0x31` before and after |
 | Whether other Wooting models (60HE+, Two HE, UwU) share the 80HE layout | Needs those keyboards. The read path already accepts any `0xFF55` Wooting device but marks it unverified |
 | Where Fn Layer 1 key colors are stored | Wootility saves no extra RGB report for them. Change one Fn layer color in Wootility and diff the whole save sequence, especially `0x1B` |
 | Ripple flags bit 1, Breath field 2, Touch fields 3–5, Scan directions 1 and 2 | No Wootility control changes them. OpenKeyboard keeps them as stored |
-| How closely the RGB Settings animation matches the keyboard (look palettes, Wave span, Noise scale, Spiral shape, and Jelly, AOE and Mixing) | Preview each effect with live preview on and compare the keyboard with the picture side by side, ideally on video |
+| How closely the drawn RGB Settings animation matches the keyboard (look palettes, Wave span, Noise scale, Spiral shape, and Jelly, AOE and Mixing). It is only used when the lighting frame (`0x4A`) does not show the draft | Preview each effect with live preview on and record `0x4A` frames, then tune `wooting-effect-animation.ts` to reproduce them |
+| Whether the `0x4A` frame includes global brightness, and what its 10 trailing values (`0xD020`) are | Lower the brightness in a live preview and read `0x4A`. Change the Fn layer or Mode key lighting and watch the trailing values |
 | What ends a pending RGB preview besides `08` (replugging, switching profiles) | Replugging restarts the keyboard on TenZ Profile (experiment 18). Preview one change, close the tab, replug, and see what the keyboard shows |
 | Whether writes before the report fix lost data | Every write went out on report 1 until experiment 19, so anything after byte 32 was cut. All 43 structures match the baseline now, and the profile writes verified on hardware were short, but a per-key write covering many keys may have been cut. Re-test per-key actuation for many keys |
 | `0x32` fields 1.2 and 1.3 (`0xFFFF`) | Look for a Wootility setting that changes them |
