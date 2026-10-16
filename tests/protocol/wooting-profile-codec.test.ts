@@ -6,6 +6,7 @@ import {
   decodeKeyMapping,
   decodeProfileMetadata,
   decodeProfileSettings,
+  decodeTachyonModeEnabled,
   matrixKeyAt,
   wootingTravelToMillimeters,
 } from "../../src/protocol/wooting/wooting-profile-codec";
@@ -19,6 +20,9 @@ import {
   keyMappingPayload,
   payloadOf,
   profileMetadataPayload,
+  tenzTachyonOffProfileSettingsPayload,
+  tenzTachyonProfileSettingsPayload,
+  typingProfileSettingsPayload,
   ultraProfileActuationPayload,
 } from "../fakes/wooting-80he-captures";
 
@@ -67,6 +71,14 @@ describe("decodeKeyMapping", () => {
 
   it("falls back to the matrix position for keys without a HID usage", () => {
     expect(labelAt(0, 14)).toBe("Row 0, Col 14");
+  });
+});
+
+describe("decodeTachyonModeEnabled", () => {
+  it("reads Tachyon Mode from settings fields 5 and 9, which Wootility switches together", () => {
+    expect(decodeTachyonModeEnabled(tenzTachyonProfileSettingsPayload)).toBe(true);
+    expect(decodeTachyonModeEnabled(tenzTachyonOffProfileSettingsPayload)).toBe(false);
+    expect(decodeTachyonModeEnabled(typingProfileSettingsPayload)).toBe(false);
   });
 });
 

@@ -43,7 +43,11 @@ export interface LightingState {
   readonly effectHidesKeyColors?: boolean;
   readonly layeredEffects?: LayeredEffects;
   readonly profileName?: string;
+  readonly profileSlot?: number;
+  readonly effectsDisabledBy?: LightingEffectsBlocker;
 }
+
+export type LightingEffectsBlocker = "tachyon-mode";
 
 export interface LightingChange {
   readonly brightnessPercent?: number;

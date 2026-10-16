@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import type { AnalogKeySource } from "../../../keyboard/analog-keys";
 import type { KeyboardLightingEditor, LightingFrameReader, LightingState } from "../../../keyboard/lighting";
-import type { KeyColorLayer, LayeredEffectCatalog } from "../../../keyboard/lighting-effects";
+import {
+  findEffect,
+  type KeyColorLayer,
+  type LayeredEffectCatalog,
+  type LayeredEffects,
+  layerFromDescriptor,
+} from "../../../keyboard/lighting-effects";
 import {
   type LayoutKey,
   matrixKeyId,
@@ -72,6 +78,11 @@ export function LayeredLightingWorkspace(
   const [animateEffects, setAnimateEffects] = useStoredFlag(ANIMATE_EFFECTS_STORAGE_KEY, !prefersReducedMotion());
   const canDiscard = dirty || preview.pending;
   const keyboardShowsDraft = !dirty || (preview.supported && livePreviewEnabled && !preview.error);
+  const effectsDisabled = current.effectsDisabledBy !== undefined;
+  const shownEffects = useMemo(
+    () => (effectsDisabled ? keyColorsOnly(catalog) ?? draft.effects : draft.effects),
+    [effectsDisabled, catalog, draft.effects],
+  );
 
   useUndoShortcuts(history.undo, history.redo, busy);
 
@@ -173,7 +184,7 @@ export function LayeredLightingWorkspace(
         <EffectPreviewKeyboard
           layout={layout}
           animator={catalog.animator}
-          effects={draft.effects}
+          effects={shownEffects}
           keyColors={draft.keyColors}
           isRunning={animateEffects}
           analogKeys={analogKeys}
@@ -215,6 +226,7 @@ export function LayeredLightingWorkspace(
             draft={draft}
             selection={selection}
             disabled={busy}
+            effectsDisabledBy={current.effectsDisabledBy}
             onSelect={setSelection}
             onEdit={history.update}
           />
@@ -273,6 +285,11 @@ function useUndoShortcuts(undo: () => void, redo: () => void, disabled: boolean)
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [undo, redo, disabled]);
+}
+
+function keyColorsOnly(catalog: LayeredEffectCatalog): LayeredEffects | undefined {
+  const keyColorsBase = findEffect(catalog.baseEffects, catalog.keyColorsBaseEffectId);
+  return keyColorsBase && { base: layerFromDescriptor(keyColorsBase), effectLayers: [] };
 }
 
 function prefersReducedMotion(): boolean {

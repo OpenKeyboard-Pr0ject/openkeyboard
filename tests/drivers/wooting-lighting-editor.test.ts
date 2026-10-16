@@ -430,6 +430,33 @@ describe("WootingLightingEditor live preview", () => {
     expect(sentSaves(keyboard)).toBe(0);
   });
 
+  it("drops a preview without writing once the keyboard switched profiles", async () => {
+    const keyboard = new FakeRgbKeyboard();
+    const { editor, reader } = editorAndReaderFor(keyboard);
+    const preview = await editor.beginPreview();
+    await preview.show({ brightnessPercent: 90 });
+    keyboard.activeSlot = 2;
+    const writesBeforeDiscard = keyboard.device.sentOutputReports.length;
+
+    await preview.discard();
+
+    expect(keyboard.device.sentOutputReports).toHaveLength(writesBeforeDiscard);
+    expect(sentSaves(keyboard)).toBe(0);
+    expect(reader.previewState.isPending(TYPING_SLOT)).toBe(false);
+  });
+
+  it("starts tracking a new preview on the profile the keyboard switched to", async () => {
+    const keyboard = new FakeRgbKeyboard();
+    const { editor, reader } = editorAndReaderFor(keyboard);
+    await (await editor.beginPreview()).show({ brightnessPercent: 90 });
+    keyboard.activeSlot = 2;
+
+    await (await editor.beginPreview()).show({ brightnessPercent: 80 });
+
+    expect(reader.previewState.isPending(TYPING_SLOT)).toBe(false);
+    expect(reader.previewState.isPending(2)).toBe(true);
+  });
+
   it("refuses invalid changes before showing them", async () => {
     const keyboard = new FakeRgbKeyboard();
     const preview = await editorFor(keyboard).beginPreview();

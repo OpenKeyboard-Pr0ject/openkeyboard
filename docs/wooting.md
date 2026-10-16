@@ -138,10 +138,10 @@ The `0x27` reply (and the `0x11` write) is a protobuf whose field 1 is the setti
 | 2 | Unknown, always `1` | Never changed |
 | 3 | Rapid Trigger on (`1`) or off (`0`) | Toggled in Wootility while polling. Verified |
 | 4 | Rapid Trigger sensitivity (travel value). Also the default sensitivity for keys that use the profile sensitivity | Changed 0.4 → 0.2 mm in Wootility. Verified |
-| 5 | Unknown (`0` on slots 0 and 1, `1` on slot 2) | |
+| 5 | Tachyon Mode, together with field 9: `1` on, `0` off | The owner toggled Tachyon Mode off and on in Wootility's Quick Settings on TenZ Profile while `0x27` was polled (2026-10-16). Fields 5 and 9 changed together both times |
 | 6 | Unknown (`2` on slots 0 and 1, absent on slot 2) | |
 | 7 | Continuous Rapid Trigger **off** (`1`) or on (`0`) | Toggled in Wootility. Wootility writes `0` while Rapid Trigger itself is off. Verified |
-| 9 | Unknown (`0` on slots 0 and 1, `1` on slot 2) | |
+| 9 | Tachyon Mode, together with field 5 | See field 5. Which of the two the firmware reads is open; OpenKeyboard treats either as on |
 
 Captured payloads:
 
@@ -150,6 +150,10 @@ slot 0  0a 14 08 d0 9f 01 10 01 18 01 20 e6 8c 01 28 00 30 02 38 00 48 00
 slot 1  0a 14 08 ff df 01 10 01 18 00 20 e6 8c 01 28 00 30 02 38 01 48 00
 slot 2  0a 0e 08 3f 10 01 18 01 20 1a 28 01 38 00 48 01
 ```
+
+These payloads were captured before Tachyon Mode was turned on for slot 0. On 2026-10-16 slot 0 read `... 28 01 30 02 38 00 48 01`.
+
+- **Tachyon Mode turns RGB effects off:** while it is on, the keyboard shows only the key colors. It ignored a previewed Wave on TenZ Profile, while previews of key colors (`0x0E`) showed at once (experiment 20). Wootility says "RGB effects are disabled while Tachyon Mode is enabled" and offers only Static. `WootingLightingReader` reads `0x27` for the active slot and sets `effectsDisabledBy: "tachyon-mode"`, and RGB Settings then hides the effect controls and explains why.
 
 Wootility's limits, read from its inputs: actuation 0.1–4.0 mm and Rapid Trigger sensitivity 0.1–2.35 mm, both in 0.05 mm steps.
 
@@ -329,6 +333,8 @@ Wootility shows every change on the keyboard before it is saved: releasing a sli
 2. **Show:** each change sends the parts whose bytes differ from what the keyboard shows now, as `0x16`, `0x0E` or `0x0F` with storage `00`. No `08`.
 3. **Save:** sends all three parts and `08 <slot>`, as Wootility's save does, then reads back and compares by meaning. It refuses if the active profile changed.
 4. **Discard:** sends the bytes read in step 1 and `08 <slot>`. This rewrites the profile with what it already held, the same way the Wootility sessions were ended (experiments 16 and 17).
+
+- **Profile switches end previews:** switching profiles on the keyboard loads the new profile's lighting, so a pending preview of the previous profile is gone. The reader and the editor forget such a preview once they see another active slot, and Discard then writes nothing. RGB Settings reads the active slot (`0x0B`) once a second and reloads when it changes.
 
 While a preview is pending, `WootingRgbPreviewState` keeps the bytes from step 1, and the reader and the editor use them for the previewed slot instead of reading the keyboard. This was meant to avoid garbled reads during a preview; experiment 18 showed the garbling was stored damage from cut reports, but keeping the saved bytes is still right, because they are what Save and Discard build on. Leaving RGB Settings discards the preview; closing the tab asks the browser to confirm, because a pending preview cannot be ended once the page is gone.
 

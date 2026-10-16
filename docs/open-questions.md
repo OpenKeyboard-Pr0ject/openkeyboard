@@ -6,7 +6,9 @@ What is still unknown, what is implemented but untested, and what would come nex
 
 | Question | How to settle it |
 |---|---|
-| Settings fields 2, 5, 6, 9 | Poll `0x27` while toggling the remaining Wootility options one at a time (for example tachyon mode, gamepad mode, Rappy Snappy, release dynamics) |
+| Settings fields 2 and 6 | Poll `0x27` while toggling the remaining Wootility options one at a time (for example gamepad mode, Rappy Snappy, release dynamics) |
+| Which of settings fields 5 and 9 the firmware reads for Tachyon Mode, and whether field 9 holds a Tachyon sub-mode (Wootility knows "tachyon focus" and "non-focus" latencies) | Look for a Wootility option that changes only one of them |
+| Whether Tachyon Mode also ignores previewed brightness | Preview a brightness change on a Tachyon profile and watch the keys (the `0x4A` frame may not include brightness) |
 | How a single key turns Rapid Trigger **off** in a profile where it is on | Wootility: select one key in TenZ Profile, switch Rapid Trigger off for it, log the `0x1D` report |
 | Split press and release sensitivity in a per-key group | Wootility: enable "Split sensitivity" for one key, log `0x1D` and read `0x3D` |
 | Whether Continuous Rapid Trigger can be set per key | Same experiment with the Continuous toggle on a single key |

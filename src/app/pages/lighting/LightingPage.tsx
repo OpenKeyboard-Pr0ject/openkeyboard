@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { AnalogKeySource } from "../../../keyboard/analog-keys";
+import type { KeyboardProfileReader } from "../../../keyboard/keyboard-profile";
 import {
   colorToHex,
   effectColors,
@@ -21,11 +22,14 @@ import { useLoadable } from "../../hooks/use-loadable";
 import { KeyColorLightingForm } from "./KeyColorLightingForm";
 import { LayeredLightingWorkspace } from "./LayeredLightingWorkspace";
 import { LightingForm } from "./LightingForm";
+import { useActiveProfileSlot } from "./use-active-profile-slot";
 
 const SAVED_NOTICE = "Saved to the keyboard and confirmed by reading it back.";
 const READ_ONLY_EXPLANATION = "OpenKeyboard reads the lighting with the same commands as the vendor's tool. "
   + "Changing it is not supported on this keyboard yet.";
 const MAXIMUM_LISTED_COLORS = 16;
+const PROFILE_SWITCHED_NOTICE = "The keyboard switched profiles, so RGB Settings now shows the lighting of the "
+  + "active profile. Unsaved changes to the previous profile were dropped.";
 
 export const HIDDEN_KEY_COLORS_TITLE = "An animated effect covers the key colors";
 export const HIDDEN_KEY_COLORS_EXPLANATION = "This profile runs an animated base effect, so the keyboard shows "
@@ -38,14 +42,26 @@ interface LightingPageProps {
   readonly physicalLayout: PhysicalLayout | undefined;
   readonly analogKeys?: AnalogKeySource;
   readonly frames?: LightingFrameReader;
+  readonly profiles?: KeyboardProfileReader;
 }
 
-export function LightingPage({ reader, editor, physicalLayout, analogKeys, frames }: LightingPageProps) {
+export function LightingPage({ reader, editor, physicalLayout, analogKeys, frames, profiles }: LightingPageProps) {
   const lighting = useLoadable(() => reader.readLighting());
   const [editing, setEditing] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
+  const [profileSwitched, setProfileSwitched] = useState(false);
   const { state } = lighting;
   const profileName = state.status === "ready" ? state.value.profileName : undefined;
+  const shownSlot = state.status === "ready" ? state.value.profileSlot : undefined;
+  const activeSlot = useActiveProfileSlot(shownSlot === undefined ? undefined : profiles);
+  const { reload } = lighting;
+
+  useEffect(() => {
+    if (activeSlot === undefined || shownSlot === undefined || activeSlot === shownSlot) return;
+    setEditing(false);
+    setProfileSwitched(true);
+    reload();
+  }, [activeSlot, shownSlot, reload]);
   const catalog = editor?.supportsKeyColors ? editor.layeredEffectCatalog : undefined;
 
   return (
@@ -56,7 +72,14 @@ export function LightingPage({ reader, editor, physicalLayout, analogKeys, frame
           ? `Lighting of ${profileName}, the active profile.`
           : "Backlight brightness and effect stored on the keyboard."}
         actions={
-          <Button size="small" icon={<RefreshIcon width={14} height={14} />} onClick={lighting.reload}>
+          <Button
+            size="small"
+            icon={<RefreshIcon width={14} height={14} />}
+            onClick={() => {
+              setProfileSwitched(false);
+              reload();
+            }}
+          >
             Refresh
           </Button>
         }
@@ -65,11 +88,12 @@ export function LightingPage({ reader, editor, physicalLayout, analogKeys, frame
       {state.status === "failed" && (
         <Card><Message>Could not read the lighting: {describeError(state.error)}</Message></Card>
       )}
+      {state.status === "ready" && profileSwitched && <Notice>{PROFILE_SWITCHED_NOTICE}</Notice>}
       {state.status === "ready" && editor && catalog && (
         <>
           {state.notice && <Notice>{state.notice}</Notice>}
           <LayeredLightingWorkspace
-            key={savedCount}
+            key={`${shownSlot}:${savedCount}`}
             current={state.value}
             editor={editor}
             catalog={catalog}
@@ -78,6 +102,7 @@ export function LightingPage({ reader, editor, physicalLayout, analogKeys, frame
             frames={frames}
             onSaved={(saved) => {
               setSavedCount((count) => count + 1);
+              setProfileSwitched(false);
               lighting.show(saved, SAVED_NOTICE);
             }}
           />

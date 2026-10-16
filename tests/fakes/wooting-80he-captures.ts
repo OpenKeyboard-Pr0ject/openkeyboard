@@ -100,3 +100,6 @@ export const typingWaveRgbFramePayload = payloadOf(
   + "15f81ff81fa01fa07f005f031f06fc07f107f107e027e087e0dfe0df80fbc0f809f8"
   + "20d0".repeat(10),
 );
+
+export const tenzTachyonProfileSettingsPayload = payloadOf("0a1408d09f011001180120e68c012801300238004801");
+export const tenzTachyonOffProfileSettingsPayload = payloadOf("0a1408d09f011001180120e68c012800300238004800");

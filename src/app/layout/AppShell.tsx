@@ -140,6 +140,7 @@ function SectionPage({ section, state, connection, theme, onOpenSection }: Secti
             physicalLayout={capabilities.physicalLayout}
             analogKeys={capabilities.analogKeys}
             frames={capabilities.lightingFrames}
+            profiles={capabilities.profiles}
           />
         )
         : null;

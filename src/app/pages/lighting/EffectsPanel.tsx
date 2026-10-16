@@ -1,4 +1,4 @@
-import { BRIGHTNESS_PERCENT_RANGE } from "../../../keyboard/lighting";
+import { BRIGHTNESS_PERCENT_RANGE, type LightingEffectsBlocker } from "../../../keyboard/lighting";
 import {
   baseHidesKeyColors,
   type EffectDescriptor,
@@ -29,6 +29,14 @@ import { EffectParameterControls } from "./EffectParameterControls";
 export const BASE_EFFECT_COVERS_KEYS_TITLE = "You have selected a base effect other than Static";
 export const BASE_EFFECT_COVERS_KEYS_EXPLANATION = "The colors of the effect replace the colors of the keys. "
   + "Select Static to show the key colors again.";
+export const EFFECTS_DISABLED_TITLES: Readonly<Record<LightingEffectsBlocker, string>> = {
+  "tachyon-mode": "Tachyon Mode turns RGB effects off",
+};
+export const EFFECTS_DISABLED_EXPLANATIONS: Readonly<Record<LightingEffectsBlocker, string>> = {
+  "tachyon-mode": "This profile runs Tachyon Mode, and the keyboard shows only the key colors while it is on, "
+    + "so effects would not appear. Key colors, presets and brightness still work. Turn Tachyon Mode off in "
+    + "Wootility's Quick Settings to use effects on this profile.",
+};
 const PRESET_PLACEHOLDER = "";
 const UNRECOGNIZED_LAYER_LABEL = "Unrecognized effect";
 const UNRECOGNIZED_LAYER_EXPLANATION = "OpenKeyboard does not know this effect yet and keeps it as it is. "
@@ -39,11 +47,14 @@ interface EffectsPanelProps {
   readonly draft: LightingDraft;
   readonly selection: LayerSelection;
   readonly disabled: boolean;
+  readonly effectsDisabledBy?: LightingEffectsBlocker;
   readonly onSelect: (selection: LayerSelection) => void;
   readonly onEdit: (change: (draft: LightingDraft) => LightingDraft) => void;
 }
 
-export function EffectsPanel({ catalog, draft, selection, disabled, onSelect, onEdit }: EffectsPanelProps) {
+export function EffectsPanel(
+  { catalog, draft, selection, disabled, effectsDisabledBy, onSelect, onEdit }: EffectsPanelProps,
+) {
   const layer = selectedLayer(draft, selection);
   const effectChoices = selection.kind === "base" ? catalog.baseEffects : catalog.layerEffects;
   const descriptor = layer && findEffect(effectChoices, layer.effectId);
@@ -97,12 +108,17 @@ export function EffectsPanel({ catalog, draft, selection, disabled, onSelect, on
           />
         </div>
       </div>
-      {baseHidesKeyColors(catalog, draft.effects) && (
+      {effectsDisabledBy && (
+        <Callout tone="warning" title={EFFECTS_DISABLED_TITLES[effectsDisabledBy]}>
+          <p className="m-0">{EFFECTS_DISABLED_EXPLANATIONS[effectsDisabledBy]}</p>
+        </Callout>
+      )}
+      {!effectsDisabledBy && baseHidesKeyColors(catalog, draft.effects) && (
         <Callout tone="warning" title={BASE_EFFECT_COVERS_KEYS_TITLE}>
           <p className="m-0">{BASE_EFFECT_COVERS_KEYS_EXPLANATION}</p>
         </Callout>
       )}
-      <div className="grid gap-4 @xl:grid-cols-3">
+      {!effectsDisabledBy && <div className="grid gap-4 @xl:grid-cols-3">
         <div className="flex flex-col gap-4">
           <div>
             <SectionLabel>Base layer</SectionLabel>
@@ -174,7 +190,7 @@ export function EffectsPanel({ catalog, draft, selection, disabled, onSelect, on
             ) : <p className="m-0 text-sm text-muted">{UNRECOGNIZED_LAYER_EXPLANATION}</p>}
           </div>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

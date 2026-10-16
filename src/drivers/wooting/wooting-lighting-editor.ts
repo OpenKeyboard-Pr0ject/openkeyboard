@@ -123,6 +123,7 @@ export class WootingLightingEditor implements KeyboardLightingEditor {
   async updateLighting(change: LightingChange): Promise<LightingState> {
     assertValidLightingChange(change, this.layeredEffectCatalog);
     const slot = await this.readActiveSlot();
+    this.previewState.forgetUnlessFor(slot);
     const stored = await this.storedParts(slot);
     const planned = plannedParts(stored, change);
     const changesSomething = WRITE_ORDER.some((part) => !samePart(part, planned, stored));
@@ -132,6 +133,7 @@ export class WootingLightingEditor implements KeyboardLightingEditor {
 
   async beginPreview(): Promise<LightingPreview> {
     const slot = await this.readActiveSlot();
+    this.previewState.forgetUnlessFor(slot);
     const stored = await this.storedParts(slot);
     return new WootingLightingPreview(this, slot, stored);
   }
@@ -159,7 +161,9 @@ export class WootingLightingEditor implements KeyboardLightingEditor {
 
   async discardPreview(slot: number, stored: StoredRgbParts): Promise<void> {
     if (!this.previewState.isPending(slot)) return;
-    await this.requireActiveSlot(slot);
+    const activeSlot = await this.readActiveSlot();
+    this.previewState.forgetUnlessFor(activeSlot);
+    if (activeSlot !== slot) return;
     await this.commit(slot, stored);
   }
 

@@ -6,7 +6,11 @@ import {
 } from "../../keyboard/lighting-effects";
 import type { WootingCommandChannel } from "../../protocol/wooting/wooting-command-channel";
 import { WootingCommand } from "../../protocol/wooting/wooting-constants";
-import { decodeCurrentProfileIndex, decodeProfileMetadata } from "../../protocol/wooting/wooting-profile-codec";
+import {
+  decodeCurrentProfileIndex,
+  decodeProfileMetadata,
+  decodeTachyonModeEnabled,
+} from "../../protocol/wooting/wooting-profile-codec";
 import { decodeRgbCore, decodeRgbRows } from "../../protocol/wooting/wooting-rgb-codec";
 import { decodeRgbEffects, WootingEffectId } from "../../protocol/wooting/wooting-rgb-effects-codec";
 import { WOOTING_EFFECT_CATALOG } from "./wooting-effect-catalog";
@@ -23,7 +27,11 @@ export class WootingLightingReader implements KeyboardLightingReader {
 
   async readLighting(): Promise<LightingState> {
     const slot = decodeCurrentProfileIndex(await this.commands.request(WootingCommand.getCurrentProfileIndex));
+    this.previewState.forgetUnlessFor(slot);
     const metadata = decodeProfileMetadata(await this.commands.request(WootingCommand.getProfileMetadata, [slot]));
+    const tachyonMode = decodeTachyonModeEnabled(
+      await this.commands.request(WootingCommand.getKeyboardProfile, [slot]),
+    );
     const { core, upperRows, lowerRows } = this.previewState.storedWhilePending(slot) ?? await this.readParts(slot);
     const layeredEffects = decodeRgbEffects(core);
     return {
@@ -33,6 +41,8 @@ export class WootingLightingReader implements KeyboardLightingReader {
       effectHidesKeyColors: baseHidesKeyColors(WOOTING_EFFECT_CATALOG, layeredEffects),
       layeredEffects,
       profileName: metadata.name,
+      profileSlot: slot,
+      ...(tachyonMode ? { effectsDisabledBy: "tachyon-mode" as const } : {}),
     };
   }
 

@@ -25,6 +25,7 @@ const ProfileSettingsField = {
   rapidTriggerSensitivity: 4,
   continuousRapidTriggerDisabled: 7,
 } as const;
+const TACHYON_MODE_FIELDS = [5, 9] as const;
 
 export interface WootingProfileSettings {
   readonly actuationRaw: number;
@@ -90,6 +91,11 @@ export function decodeProfileSettings(payload: Uint8Array): WootingProfileSettin
     rapidTriggerSensitivityRaw: settings.varint(ProfileSettingsField.rapidTriggerSensitivity),
     continuousRapidTriggerEnabled: settings.varint(ProfileSettingsField.continuousRapidTriggerDisabled) === 0,
   };
+}
+
+export function decodeTachyonModeEnabled(payload: Uint8Array): boolean {
+  const settings = ProtobufMessage.decode(payload).message(KeyboardProfileField.settings);
+  return TACHYON_MODE_FIELDS.some((field) => settings.varint(field) !== 0);
 }
 
 export function applyProfileSettingsChange(

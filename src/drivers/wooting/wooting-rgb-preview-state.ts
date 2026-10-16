@@ -20,6 +20,10 @@ export class WootingRgbPreviewState {
     this.pending = undefined;
   }
 
+  forgetUnlessFor(activeSlot: number): void {
+    if (this.pending && this.pending.slot !== activeSlot) this.pending = undefined;
+  }
+
   isPending(slot: number): boolean {
     return this.pending?.slot === slot;
   }

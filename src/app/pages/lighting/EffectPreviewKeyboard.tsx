@@ -11,7 +11,8 @@ export const KEYBOARD_FRAMES_HINT = "The picture shows the lighting the keyboard
 export const DRAWN_EFFECTS_HINT = "The picture draws the selected effects as closely as OpenKeyboard can. "
   + "The keyboard itself is the reference.";
 export const LIVE_PREVIEW_FOR_FRAMES_HINT = "Turn on Live preview to see the keyboard's own lighting here.";
-export const KEY_PRESS_EFFECTS_HINT = "Press keys on the keyboard, or hold keys in the picture, to try the effect layers.";
+export const KEY_PRESS_EFFECTS_HINT = "Press keys on the keyboard, or hold keys in the picture, "
+  + "to try the effect layers.";
 
 interface EffectPreviewKeyboardProps {
   readonly layout: PhysicalLayout;

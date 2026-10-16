@@ -11,6 +11,7 @@ import {
   replyCarrying,
   tenzRgbCorePayload,
   tenzRgbRowsPayload,
+  tenzTachyonProfileSettingsPayload,
   typingRgbCorePayload,
 } from "../fakes/wooting-80he-captures";
 
@@ -24,9 +25,11 @@ const TENZ_PROFILE_PAYLOADS: ReadonlyMap<number, Uint8Array> = new Map([
   [WootingCommand.getRgbLowerRows, tenzRgbRowsPayload],
 ]);
 
-function readerWithRequests(corePayload = tenzRgbCorePayload) {
+function readerWithRequests(corePayload = tenzRgbCorePayload, settingsPayload = emptyPayload) {
   const requests: Array<readonly [number, number]> = [];
-  const payloads = new Map(TENZ_PROFILE_PAYLOADS).set(WootingCommand.getRgbCore, corePayload);
+  const payloads = new Map(TENZ_PROFILE_PAYLOADS)
+    .set(WootingCommand.getRgbCore, corePayload)
+    .set(WootingCommand.getKeyboardProfile, settingsPayload);
   const keyboard = new FakeHidDevice({
     respond: (_reportId, data) => {
       requests.push([data[2], data[PROFILE_SLOT_PARAMETER_INDEX]]);
@@ -46,6 +49,7 @@ describe("WootingLightingReader", () => {
     expect(lighting.effect).toEqual({ kind: "per-key" });
     expect(lighting.effectHidesKeyColors).toBe(false);
     expect(lighting.profileName).toBe("TenZ Profile");
+    expect(lighting.profileSlot).toBe(0);
     expect(lighting.keyColors).toHaveLength(126);
     expect(lighting.keyColors?.find((key) => key.matrixRow === 5 && key.matrixColumn === 20)?.color)
       .toEqual({ red: 255, green: 239, blue: 0 });
@@ -73,6 +77,15 @@ describe("WootingLightingReader", () => {
     expect(lighting.effect).toEqual({ kind: "layered", description: "Static with RT display" });
   });
 
+  it("reports that Tachyon Mode turns the effects off", async () => {
+    expect((await readerWithRequests().reader.readLighting()).effectsDisabledBy).toBeUndefined();
+
+    const { reader } = readerWithRequests(tenzRgbCorePayload, tenzTachyonProfileSettingsPayload);
+    const lighting = await reader.readLighting();
+
+    expect(lighting.effectsDisabledBy).toBe("tachyon-mode");
+  });
+
   it("sends only read commands, each for the active slot", async () => {
     const { reader, requests } = readerWithRequests();
 
@@ -81,6 +94,7 @@ describe("WootingLightingReader", () => {
     expect(requests).toEqual([
       [WootingCommand.getCurrentProfileIndex, 0],
       [WootingCommand.getProfileMetadata, 0],
+      [WootingCommand.getKeyboardProfile, 0],
       [WootingCommand.getRgbCore, 0],
       [WootingCommand.getRgbUpperRows, 0],
       [WootingCommand.getRgbLowerRows, 0],

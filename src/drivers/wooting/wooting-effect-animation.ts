@@ -249,7 +249,8 @@ function renderJelly(color: RgbColor, values: EffectValues, key: AnimatedKey, fr
       ? 1
       : clamped(1 - (timeSeconds - press.releasedAt) / JELLY_RELEASE_SECONDS);
     if (fade === 0) continue;
-    const wobble = 1 + JELLY_WOBBLE_AMOUNT * Math.sin((timeSeconds - press.pressedAt) * JELLY_WOBBLE_RADIANS_PER_SECOND);
+    const wobblePhase = (timeSeconds - press.pressedAt) * JELLY_WOBBLE_RADIANS_PER_SECOND;
+    const wobble = 1 + JELLY_WOBBLE_AMOUNT * Math.sin(wobblePhase);
     const radius = JELLY_RADIUS_KEYS * depthResponseOf(values, press) * fade * wobble + JELLY_CORE_KEYS;
     const falloff = clamped(1 - (distanceBetween(key, origin) / radius) ** 2);
     strongest = Math.max(strongest, falloff * fade);
